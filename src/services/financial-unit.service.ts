@@ -1,6 +1,8 @@
 import { FinancialUnitModel, IFinancialUnit, INewFinancialUnitData } from '../models/financial-unit.model';
 import { deleteAllFinancialAccounts } from './financial-account.service';
 import { deleteAllFinancialTransactions } from './financial-transaction.service';
+import { deleteAllInventoryItems } from './inventory-item.service';
+import { deleteAllInventoryTransactions } from './inventory-transaction.service';
 
 export const createFinancialUnit = async (data: INewFinancialUnitData): Promise<IFinancialUnit> => {
     const financialUnit: IFinancialUnit = await new FinancialUnitModel(data).save()
@@ -31,9 +33,11 @@ export const getFinancialUnit = async (financialUnitId: string): Promise<IFinanc
 
 export const deleteFinancialUnit = async (financialUnitId: string): Promise<'OK'> => {
     await FinancialUnitModel.findByIdAndDelete(financialUnitId).exec()
-        .then(() => {
+        .then((_res) => {
             deleteAllFinancialAccounts(financialUnitId);
             deleteAllFinancialTransactions(financialUnitId);
+            deleteAllInventoryItems(financialUnitId);
+            deleteAllInventoryTransactions(financialUnitId);
         })
         .catch((err) => {
             console.error(err);

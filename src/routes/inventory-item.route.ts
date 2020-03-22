@@ -10,6 +10,7 @@ router.get('/get-all-inventory-items', (req: Request, res: Response) => {
             res.send(inventoryItems);
         })
         .catch((err) => {
+            console.error(err);
             res.status(500).json(err);
         });
 });
@@ -22,6 +23,7 @@ router.post('/create-inventory-item', (req: Request, res: Response) => {
             res.send(inventoryItem);
         })
         .catch((err) => {
+            console.error(err);
             res.status(500).json(err);
         });
 });

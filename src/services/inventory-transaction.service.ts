@@ -52,7 +52,7 @@ const createIncrementInventoryTransaction = async (data: IIncrementInventoryTran
     const newFinancialTransactionData: INewFinancialTrasactionData = {
         inventoryTransactionId: inventoryTransaction.id,
         inventoryItemId: inventoryItem.id,
-        financialUnitId: inventoryItem.id,
+        financialUnitId: inventoryItem.financialUnitId,
         debitAccountId: data.debitAccountId,
         creditAccountId: data.creditAccountId,
         amount
@@ -63,9 +63,9 @@ const createIncrementInventoryTransaction = async (data: IIncrementInventoryTran
 
 const getSortedStock = (stock: IStockBatch[], stockDecrementType: StockDecrementType): IStockBatch[] => {
     if (stockDecrementType == StockDecrementType.FIFO) {
-        return stock.sort((a, b) => a.added.getMilliseconds() - b.added.getMilliseconds());
+        return stock.sort((a, b) => a.added.getTime() - b.added.getTime());
     } else if (stockDecrementType == StockDecrementType.LIFO) {
-        return stock.sort((a, b) => b.added.getMilliseconds() - a.added.getMilliseconds());
+        return stock.sort((a, b) => b.added.getTime() - a.added.getTime());
     } else if (stockDecrementType == StockDecrementType.Average) {
         const quantity: number = stock
             .map((batch) => batch.quantity)
@@ -76,7 +76,6 @@ const getSortedStock = (stock: IStockBatch[], stockDecrementType: StockDecrement
         const costPerUnit: number = quantity ? totalCost / quantity : 0;
         return [{ quantity, costPerUnit, added: new Date() }];
     } else {
-        console.error('Neznámá oceňovací metoda pro vyskladnění');
         throw new Error('Neznámá oceňovací metoda pro vyskladnění');
     }
 }
@@ -89,34 +88,34 @@ const getStockDecrementResult = (
     const currentStockQuantity: number = unorderedCurrentStock
         .map((stockBatch) => stockBatch.quantity)
         .reduce((acc, val) => acc + val, 0);
-    console.log(`${currentStockQuantity} < ${currentStockQuantity} >>> ${currentStockQuantity < currentStockQuantity}`);
-    if (currentStockQuantity < currentStockQuantity) {
-        console.error('Nedostačné množství pro vyskladnění');
+    if (currentStockQuantity < quantityToRemove) {
         throw new Error('Nedostačné množství pro vyskladnění');
     }
-    console.log('mnozstvi je ok');
     const currentStock: IStockBatch[] = getSortedStock(unorderedCurrentStock, stockDecrementType);
     let quantityToRemoveLeft: number = quantityToRemove;
     let totalCost: number = 0;
-    const stock: IStockBatch[] = currentStock.map((batch): IStockBatch => {
+    const unfiltredStock: IStockBatch[] = currentStock.map((batch): IStockBatch => {
         if (quantityToRemoveLeft == 0) {
-            return { ...batch };
-        } else if (batch.quantity >= quantityToRemoveLeft) {
+            const { quantity, costPerUnit, added } = batch;
+            return { quantity, costPerUnit, added };
+        } else if (batch.quantity < quantityToRemoveLeft) {
+            totalCost +=  batch.quantity * batch.costPerUnit;
             quantityToRemoveLeft = quantityToRemoveLeft - batch.quantity;
             return { quantity: 0, costPerUnit: batch.costPerUnit, added: batch.added };
         } else {
             const newBatchQuantity: number = batch.quantity - quantityToRemoveLeft;
+            totalCost += quantityToRemoveLeft * batch.costPerUnit;
             quantityToRemoveLeft = 0;
             return { quantity: newBatchQuantity, costPerUnit: batch.costPerUnit, added: batch.added };
         }
-    }).filter((batch) => batch.quantity > 0);
+    })
+    const stock: IStockBatch[] = unfiltredStock.filter((batch) => batch.quantity > 0);
     return { stock, totalCost };
 }
 
 const createDecrementInventoryTransaction = async (data: IDecrementInventoryTransactionData): Promise<IInventoryTransaction> => {
     const inventoryItem: IInventoryItem | null = await getInventoryItem(data.inventoryItemId);
     if (!inventoryItem) {
-        console.error(`Skladová položka s ID ${data.inventoryItemId} neexistuje`);
         throw new Error(`Skladová položka s ID ${data.inventoryItemId} neexistuje`);
     }
     const stockDecrementType: StockDecrementType = await getInventoryItemStockDecrementType(inventoryItem.id);
@@ -134,7 +133,7 @@ const createDecrementInventoryTransaction = async (data: IDecrementInventoryTran
     const newFinancialTransactionData: INewFinancialTrasactionData = {
         inventoryTransactionId: inventoryTransaction.id,
         inventoryItemId: inventoryItem.id,
-        financialUnitId: inventoryItem.id,
+        financialUnitId: inventoryItem.financialUnitId,
         debitAccountId: data.debitAccountId,
         creditAccountId: data.creditAccountId,
         amount: stockDecrementResult.totalCost
@@ -150,7 +149,6 @@ export const createInventoryTransaction = (type: InventoryTransactionType, data:
         case InventoryTransactionType.Decrement:
             return createDecrementInventoryTransaction(data as IDecrementInventoryTransactionData);
         default:
-            console.error('Neznámý typ skladové transakce');
             throw new Error('Neznámý typ skladové transakce');
     }
 }
@@ -163,3 +161,12 @@ export const getAllInventoryTransactions = async (financialUnitId: string): Prom
         });
     return inventoryTransactions;
 }
+
+export const deleteAllInventoryTransactions = async (financialUnitId: string): Promise<'OK'> => {
+    await InventoryTransactionModel.deleteMany({ financialUnitId }).exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při odstraňování skladových transakcí');            
+        });
+    return 'OK';
+}; 

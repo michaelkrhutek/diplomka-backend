@@ -8,6 +8,7 @@ router.get('/get-all-financial-accounts', (req: Request, res: Response) => {
     getAllFinancialAccounts(financialUnitId).then((financialAccounts) => {
         res.send(financialAccounts);
     }).catch((err) => {
+        console.error(err);
         res.status(500).json(err);
     });
 });
@@ -18,6 +19,7 @@ router.post('/create-financial-account', (req: Request, res: Response) => {
     createFinancialAccount({ name, financialUnitId }).then((financialAccount) => {
         res.send(financialAccount);
     }).catch((err) => {
+        console.error(err);
         res.status(500).json(err);
     });
 });

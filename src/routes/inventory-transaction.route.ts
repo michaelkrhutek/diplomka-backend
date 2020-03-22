@@ -11,6 +11,7 @@ router.get('/get-all-inventory-transactions', (req: Request, res: Response) => {
             res.send(inventoryTransactions);
         })
         .catch((err) => {
+            console.error(err);
             res.status(500).json(err);
         });
 });
@@ -23,6 +24,7 @@ router.post('/create-inventory-transaction', (req: Request, res: Response) => {
             res.send(inventoryTransaction);
         })
         .catch((err) => {
+            console.error(err);
             res.status(500).json(err);
         });
 });

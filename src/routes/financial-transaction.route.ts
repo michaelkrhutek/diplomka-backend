@@ -8,6 +8,7 @@ router.get('/get-all-financial-transactions', (req: Request, res: Response) => {
     getAllFinancialTransactions(financialUnitId).then((financialTransactions) => {
         res.send(financialTransactions);
     }).catch((err) => {
+        console.error(err);
         res.status(500).json(err);
     });
 });
