@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getAllFinancialTransactions } from '../services/financial-transaction.service';
+import { getTrialBalance } from '../services/trial-balance.service';
 
 const router: Router = Router();
 
@@ -12,5 +13,17 @@ router.get('/get-all-financial-transactions', (req: Request, res: Response) => {
         res.status(500).json(err);
     });
 });
+
+router.get('/get-trial-balance', (req: Request, res: Response) => {
+    const financialUnitId: string = req.query.financialUnitId;
+    getTrialBalance(financialUnitId)
+        .then((trialBalance) => {
+            res.send(trialBalance);
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).json(err);
+        });
+})
 
 export default router;

@@ -45,3 +45,14 @@ export const deleteFinancialUnit = async (financialUnitId: string): Promise<'OK'
         });
     return 'OK';
 };
+
+export const deleteAllTransactions = async (financialUnitId: string): Promise<'OK'> => {
+    await Promise.all([
+        deleteAllFinancialTransactions(financialUnitId),
+        deleteAllInventoryTransactions(financialUnitId)
+    ]).catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při odstraňování transakcí účetní jednotky');            
+    });
+    return 'OK';
+};

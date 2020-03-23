@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { createFinancialUnit, deleteFinancialUnit, getAllFinancialUnits, getFinancialUnit } from '../services/financial-unit.service';
+import { createFinancialUnit, deleteFinancialUnit, getAllFinancialUnits, getFinancialUnit, deleteAllTransactions } from '../services/financial-unit.service';
 
 const router: Router = Router();
 
@@ -36,6 +36,18 @@ router.post('/create-financial-unit', (req: Request, res: Response) => {
 router.delete('/delete-financial-unit', (req: Request, res: Response) => {
     const financialUnitId: string = req.query.id;
     deleteFinancialUnit(financialUnitId)
+        .then(() => {
+            res.send('OK');
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).json(err);
+        });
+});
+
+router.delete('/delete-all-transactions', (req: Request, res: Response) => {
+    const financialUnitId: string = req.query.id;
+    deleteAllTransactions(financialUnitId)
         .then(() => {
             res.send('OK');
         })
