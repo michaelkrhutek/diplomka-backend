@@ -7,6 +7,7 @@ export interface INewFinancialTrasactionData {
     financialUnitId: string;
     debitAccountId: string;
     creditAccountId: string;
+    effectiveDate: Date;
     amount: number;
 }
 
@@ -36,6 +37,10 @@ const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
     creditAccountId: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialAccount',
+        required: true
+    },
+    effectiveDate: {
+        type: Date,
         required: true
     },
     amount: {

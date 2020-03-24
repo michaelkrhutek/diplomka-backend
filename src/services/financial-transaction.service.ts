@@ -1,7 +1,5 @@
 import { FinancialTransactionModel, INewFinancialTrasactionData, IFinancialTransaction } from '../models/financial-transaction.model';
-import { mongoose } from '../mongoose-instance';
-import { Error, Schema } from 'mongoose';
-import { FinancialAccountModel, IFinancialAccount } from '../models/financial-account.model';
+import { Error } from 'mongoose';
 
 export const createFinancialTransaction = async (data: INewFinancialTrasactionData): Promise<IFinancialTransaction> => {
     const financialTransaction: IFinancialTransaction = await new FinancialTransactionModel(data).save()
@@ -29,4 +27,3 @@ export const deleteAllFinancialTransactions = async (financialUnitId: string): P
         });
     return 'OK';
 }
-

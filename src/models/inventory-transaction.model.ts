@@ -5,6 +5,7 @@ export interface IStockBatch {
     quantity: number;
     costPerUnit: number;
     added: Date;
+    transactionIndex: number;
 }
 
 export interface IStockDecrementResult {
@@ -17,58 +18,113 @@ export enum InventoryTransactionType {
     Decrement = 'decrement'
 }
 
-export interface IIncrementInventoryTransactionData {
-    description: string;
-    inventoryItemId: string;
-    debitAccountId: string;
-    creditAccountId: string;
+export interface IIncrementInventoryTransactionSpecificData {
     quantity: number;
     costPerUnit: number;
-}
+};
 
-export interface IDecrementInventoryTransactionData {
-    description: string;
-    inventoryItemId: string;
-    debitAccountId: string;
-    creditAccountId: string;
+export interface IDecrementInventoryTransactionSpecificData {
     quantity: number;
 }
 
-export interface INewInventoryTransaction {
+export interface INewInventoryTransactionRequestData<SpecificData> {
     inventoryItemId: string;
-    financialUnitId: string;
-    type: InventoryTransactionType;
-    data: any;
-    stock: IStockBatch[];
+    description: string;
+    effectiveDate: Date;
+    addBeforeTransactionWithIndex?: number;
+    debitAccountId: string;
+    creditAccountId: string;
+    specificData: SpecificData;
 }
 
-export interface IInventoryTransaction extends INewInventoryTransaction, Document {}
+export interface INewInventoryTransaction<SpecificData> {
+    type: InventoryTransactionType;
+    inventoryItemId: string;
+    description: string;
+    effectiveDate: Date;
+    debitAccountId: string;
+    creditAccountId: string;
+    specificData: SpecificData;
+    stock: IStockBatch[];
+    // previousTransactionId: string | null;
+    financialUnitId: string;
+    inventoryItemTransactionIndex: number;
+    isDerivedTransaction: boolean;
+    transactionIdForcingDerivation: string | null;
+    isActive?: boolean;
+    isFirst?: boolean
+}
 
-const InventoryTransactionSchema = new Schema<IInventoryTransaction>({
+export interface IInventoryTransaction<SpecificData> extends INewInventoryTransaction<SpecificData>, Document {}
+
+const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
+    type: {
+        type: String,
+        required: true
+    },
     inventoryItemId: {
         type: Schema.Types.ObjectId,
         ref: 'InventoryItem',
         required: true
     },
+    // previousTransactionId: {
+    //     type: Schema.Types.ObjectId,
+    //     ref: 'InventoryTransaction'
+    // },
     financialUnitId: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialUnit',
         required: true
     },
-    type: {
+    description: {
         type: String,
         required: true
     },
-    data: {
-        type: Object,
+    effectiveDate: {
+        type: Date,
+        required: true
+    },
+    inventoryItemTransactionIndex: {
+        type: Number,
+        required: true
+    },
+    debitAccountId: {
+        type: Schema.Types.ObjectId,
+        ref: 'FinancialAccount',
+        required: true
+    },
+    creditAccountId: {
+        type: Schema.Types.ObjectId,
+        ref: 'FinancialAccount',
         required: true
     },
     stock: {
         type: [{ quantity: Number, costPerUnit: Number, added: Date }],
         required: true
+    },
+    specificData: {
+        type: Object,
+        required: true
+    },
+    isDerivedTransaction: {
+        type: Boolean,
+        required: true,        
+    },
+    transactionIdForcingDerivation: {
+        type: Schema.Types.ObjectId,
+        ref: 'InventoryTransaction',
+        default: null
+    },
+    isActive: {
+        type: Boolean,
+        default: false,
+    },
+    isFirst: {
+        type: Boolean,
+        default: false
     }
 });
 
-export const InventoryTransactionModel = mongoose.model<IInventoryTransaction>(
+export const InventoryTransactionModel = mongoose.model<IInventoryTransaction<any>>(
     'InventoryTransaction', InventoryTransactionSchema
 );

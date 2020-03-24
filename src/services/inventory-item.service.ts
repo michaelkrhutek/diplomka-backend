@@ -1,4 +1,5 @@
 import { InventoryItemModel, IInventoryItem, INewInventoryItemData, StockDecrementType } from '../models/inventory-item.model';
+import { FinancialTransactionModel } from '../models/financial-transaction.model';
 
 export const createInventoryItem = async (data: INewInventoryItemData): Promise<IInventoryItem> => {
     const inventoryItem: IInventoryItem = await new InventoryItemModel(data).save()
@@ -40,4 +41,4 @@ export const deleteAllInventoryItems = async (financialUnitId: string): Promise<
             throw new Error('Chyba při odstraňování skladových položek');            
         });
     return 'OK';
-}; 
+};
