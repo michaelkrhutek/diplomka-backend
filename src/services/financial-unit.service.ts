@@ -1,11 +1,13 @@
-import { FinancialUnitModel, IFinancialUnit, INewFinancialUnitData } from '../models/financial-unit.model';
-import { deleteAllFinancialAccounts } from './financial-account.service';
-import { deleteAllFinancialTransactions } from './financial-transaction.service';
-import { deleteAllInventoryItems } from './inventory-item.service';
-import { deleteAllInventoryTransactions } from './inventory-transaction.service';
+import { FinancialUnitModel, IFinancialUnitDoc, INewFinancialUnitData } from '../models/financial-unit.model';
+import * as financialAccountService from './financial-account.service';
+import * as financialTransactionService from './financial-transaction.service';
+import * as inventoryItemService  from './inventory-item.service';
+import * as inventoryTransactionService from './inventory-transaction.service';
 
-export const createFinancialUnit = async (data: INewFinancialUnitData): Promise<IFinancialUnit> => {
-    const financialUnit: IFinancialUnit = await new FinancialUnitModel(data).save()
+
+
+export const createFinancialUnit = async (data: INewFinancialUnitData): Promise<IFinancialUnitDoc> => {
+    const financialUnit: IFinancialUnitDoc = await new FinancialUnitModel(data).save()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při vytváření účetní jednotky');
@@ -13,8 +15,10 @@ export const createFinancialUnit = async (data: INewFinancialUnitData): Promise<
     return financialUnit;
 }
 
-export const getAllFinancialUnits = async (): Promise<IFinancialUnit[]> => {
-    const financialUnits: IFinancialUnit[] = await FinancialUnitModel.find().exec()
+
+
+export const getAllFinancialUnits = async (): Promise<IFinancialUnitDoc[]> => {
+    const financialUnits: IFinancialUnitDoc[] = await FinancialUnitModel.find().exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání účetních jednotek');
@@ -22,8 +26,10 @@ export const getAllFinancialUnits = async (): Promise<IFinancialUnit[]> => {
     return financialUnits;
 }
 
-export const getFinancialUnit = async (financialUnitId: string): Promise<IFinancialUnit | null> => {
-    const financialUnit: IFinancialUnit | null = await FinancialUnitModel.findById(financialUnitId).exec()
+
+
+export const getFinancialUnit = async (financialUnitId: string): Promise<IFinancialUnitDoc | null> => {
+    const financialUnit: IFinancialUnitDoc | null = await FinancialUnitModel.findById(financialUnitId).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání účetní jednotky');
@@ -31,13 +37,15 @@ export const getFinancialUnit = async (financialUnitId: string): Promise<IFinanc
     return financialUnit;
 }
 
+
+
 export const deleteFinancialUnit = async (financialUnitId: string): Promise<'OK'> => {
     await FinancialUnitModel.findByIdAndDelete(financialUnitId).exec()
         .then((_res) => {
-            deleteAllFinancialAccounts(financialUnitId);
-            deleteAllFinancialTransactions(financialUnitId);
-            deleteAllInventoryItems(financialUnitId);
-            deleteAllInventoryTransactions(financialUnitId);
+            financialAccountService.deleteAllFinancialAccounts(financialUnitId);
+            financialTransactionService.deleteAllFinancialTransactions(financialUnitId);
+            inventoryItemService.deleteAllInventoryItems(financialUnitId);
+            inventoryTransactionService.deleteAllInventoryTransactions(financialUnitId);
         })
         .catch((err) => {
             console.error(err);
@@ -46,10 +54,12 @@ export const deleteFinancialUnit = async (financialUnitId: string): Promise<'OK'
     return 'OK';
 };
 
+
+
 export const deleteAllTransactions = async (financialUnitId: string): Promise<'OK'> => {
     await Promise.all([
-        deleteAllFinancialTransactions(financialUnitId),
-        deleteAllInventoryTransactions(financialUnitId)
+        financialTransactionService.deleteAllFinancialTransactions(financialUnitId),
+        inventoryTransactionService.deleteAllInventoryTransactions(financialUnitId)
     ]).catch((err) => {
         console.error(err);
         throw new Error('Chyba při odstraňování transakcí účetní jednotky');            

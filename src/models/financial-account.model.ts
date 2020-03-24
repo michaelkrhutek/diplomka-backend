@@ -1,12 +1,14 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
+import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 
 export interface INewFinancialAccountData {
     name: string;
     financialUnitId: string;
 }
 
-export interface IFinancialAccount extends INewFinancialAccountData, Document {};
+export interface IFinancialAccount extends INewFinancialAccountData, IPlainMongooseDoc {};
+export interface IFinancialAccountDoc extends INewFinancialAccountData, Document {};
 
 const FinancialAccountSchema = new Schema<IFinancialAccount>({
     name: {
@@ -20,6 +22,6 @@ const FinancialAccountSchema = new Schema<IFinancialAccount>({
     }
 });
 
-export const FinancialAccountModel = mongoose.model<IFinancialAccount>(
+export const FinancialAccountModel = mongoose.model<IFinancialAccountDoc>(
     'FinancialAccount', FinancialAccountSchema
 );

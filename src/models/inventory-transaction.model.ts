@@ -1,5 +1,6 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
+import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 
 export interface IStockBatch {
     quantity: number;
@@ -8,9 +9,14 @@ export interface IStockBatch {
     transactionIndex: number;
 }
 
-export interface IStockDecrementResult {
+export interface IStockQuantityChangeResult {
     stock: IStockBatch[];
+    changeCost: number;
+}
+
+export interface IStockMetrics {
     totalCost: number;
+    totalQuantity: number;
 }
 
 export enum InventoryTransactionType {
@@ -54,7 +60,8 @@ export interface INewInventoryTransaction<SpecificData> {
     isActive?: boolean;
 }
 
-export interface IInventoryTransaction<SpecificData> extends INewInventoryTransaction<SpecificData>, Document {}
+export interface IInventoryTransaction<SpecificData> extends INewInventoryTransaction<SpecificData>, IPlainMongooseDoc {}
+export interface IInventoryTransactionDoc<SpecificData> extends INewInventoryTransaction<SpecificData>, Document {}
 
 const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
     type: {
@@ -120,6 +127,6 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
     },
 });
 
-export const InventoryTransactionModel = mongoose.model<IInventoryTransaction<any>>(
+export const InventoryTransactionModel = mongoose.model<IInventoryTransactionDoc<any>>(
     'InventoryTransaction', InventoryTransactionSchema
 );

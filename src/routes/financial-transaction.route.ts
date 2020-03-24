@@ -16,7 +16,9 @@ router.get('/get-all-financial-transactions', (req: Request, res: Response) => {
 
 router.get('/get-trial-balance', (req: Request, res: Response) => {
     const financialUnitId: string = req.query.financialUnitId;
-    getTrialBalance(financialUnitId)
+    const startDate: Date = new Date(req.query.startDate);
+    const endDate: Date = new Date(req.query.endDate);
+    getTrialBalance(financialUnitId, startDate, endDate)
         .then((trialBalance) => {
             res.send(trialBalance);
         })

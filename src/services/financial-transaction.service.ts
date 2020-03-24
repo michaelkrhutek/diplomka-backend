@@ -1,11 +1,11 @@
-import { FinancialTransactionModel, INewFinancialTrasactionData, IFinancialTransaction } from '../models/financial-transaction.model';
+import { FinancialTransactionModel, INewFinancialTrasactionData, IFinancialTransactionDoc } from '../models/financial-transaction.model';
 import { Error } from 'mongoose';
 
 
 
-export const createActiveFinancialTransaction = async (data: INewFinancialTrasactionData): Promise<IFinancialTransaction> => {
+export const createActiveFinancialTransaction = async (data: INewFinancialTrasactionData): Promise<IFinancialTransactionDoc> => {
     data.isActive = true;
-    const financialTransaction: IFinancialTransaction = await new FinancialTransactionModel(data).save()
+    const financialTransaction: IFinancialTransactionDoc = await new FinancialTransactionModel(data).save()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při ukládání účetního zápisu');
@@ -15,9 +15,9 @@ export const createActiveFinancialTransaction = async (data: INewFinancialTrasac
 
 
 
-export const createInactiveFinancialTransaction = async (data: INewFinancialTrasactionData): Promise<IFinancialTransaction> => {
+export const createInactiveFinancialTransaction = async (data: INewFinancialTrasactionData): Promise<IFinancialTransactionDoc> => {
     data.isActive = false;
-    const financialTransaction: IFinancialTransaction = await new FinancialTransactionModel(data).save()
+    const financialTransaction: IFinancialTransactionDoc = await new FinancialTransactionModel(data).save()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při ukládání účetního zápisu');
@@ -77,8 +77,8 @@ export const deleteInactiveFinancialTransaction = async (
 
 
 
-export const getAllFinancialTransactions = async (financialUnitId: string): Promise<IFinancialTransaction[]> => {
-    const financialTransactions: IFinancialTransaction[] = await FinancialTransactionModel.find({ financialUnitId })
+export const getAllFinancialTransactions = async (financialUnitId: string): Promise<IFinancialTransactionDoc[]> => {
+    const financialTransactions: IFinancialTransactionDoc[] = await FinancialTransactionModel.find({ financialUnitId })
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání účetních zápisů');

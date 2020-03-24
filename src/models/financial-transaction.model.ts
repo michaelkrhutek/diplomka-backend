@@ -1,5 +1,6 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
+import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 
 export interface INewFinancialTrasactionData {
     inventoryItemId: string;
@@ -15,7 +16,8 @@ export interface INewFinancialTrasactionData {
     isActive?: boolean;
 }
 
-export interface IFinancialTransaction extends INewFinancialTrasactionData, Document {};
+export interface IFinancialTransaction extends INewFinancialTrasactionData, IPlainMongooseDoc {};
+export interface IFinancialTransactionDoc extends INewFinancialTrasactionData, Document {};
 
 const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
     financialUnitId: {
@@ -70,6 +72,6 @@ const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
     },
 });
 
-export const FinancialTransactionModel = mongoose.model<IFinancialTransaction>(
+export const FinancialTransactionModel = mongoose.model<IFinancialTransactionDoc>(
     'FinancialTransaction', FinancialTransactionSchema
 );
