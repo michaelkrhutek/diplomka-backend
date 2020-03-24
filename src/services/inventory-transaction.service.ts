@@ -10,7 +10,7 @@ import {
 } from "../models/inventory-transaction.model";
 import { IInventoryItem, StockDecrementType } from "../models/inventory-item.model";
 import { getInventoryItem, getInventoryItemStockDecrementType } from "./inventory-item.service";
-import { createFinancialTransaction } from "./financial-transaction.service";
+import { deleteInactiveFinancialTransaction, createInactiveFinancialTransaction, activateCreatedFinancialTransactions, deleteActiveFinancialTransactionsWithIndexEqualOrLarger } from "./financial-transaction.service";
 import { INewFinancialTrasactionData, FinancialTransactionModel } from "../models/financial-transaction.model";
 import { Error } from "mongoose";
 
@@ -154,9 +154,12 @@ const createIncrementInventoryTransaction = async (
         effectiveDate: requestData.effectiveDate,
         debitAccountId: requestData.debitAccountId,
         creditAccountId: requestData.creditAccountId,
-        amount: totalTransactionAmount
+        amount: totalTransactionAmount,
+        inventoryItemTransactionIndex,
+        isDerivedTransaction: !!transactionIdForcingDerivation,
+        inventoryTransactionIdForcingDerivation: transactionIdForcingDerivation
     };
-    await createFinancialTransaction(newFinancialTransactionData);
+    await createInactiveFinancialTransaction(newFinancialTransactionData);
     return inventoryTransaction;
 }
 
@@ -257,9 +260,12 @@ const createDecrementInventoryTransaction = async (
         debitAccountId: requestData.debitAccountId,
         creditAccountId: requestData.creditAccountId,
         effectiveDate: requestData.effectiveDate,
-        amount: stockDecrementResult.totalCost
+        amount: stockDecrementResult.totalCost,
+        inventoryItemTransactionIndex,
+        isDerivedTransaction: !!transactionIdForcingDerivation,
+        inventoryTransactionIdForcingDerivation: transactionIdForcingDerivation
     };
-    await createFinancialTransaction(newFinancialTransactionData);
+    await createInactiveFinancialTransaction(newFinancialTransactionData);
     return inventoryTransaction;
 }
 
@@ -307,7 +313,8 @@ const activateCreatedInventoryTransactions = async (
 ): Promise<'OK'> => {
     await Promise.all([
         await InventoryTransactionModel.findByIdAndUpdate(newInventoryTransactionId, { isActive: true }).exec(),
-        await InventoryTransactionModel.updateMany({ transactionIdForcingDerivation: newInventoryTransactionId }, { isActive : 1 }).exec()
+        await InventoryTransactionModel.updateMany({ transactionIdForcingDerivation: newInventoryTransactionId }, { isActive : 1 }).exec(),
+        await activateCreatedFinancialTransactions(newInventoryTransactionId)
     ]);
     return 'OK';
 }
@@ -318,11 +325,14 @@ const deleteActiveInventoryTransactionsWithIndexEqualOrLarger = async (
     inventoryItemId: string,
     inventoryItemTransactionIndex: number
 ): Promise<'OK'> => {
-    await InventoryTransactionModel.deleteMany({
-        inventoryItemId,
-        inventoryItemTransactionIndex: { $gte: inventoryItemTransactionIndex },
-        isActive: true
-    }).exec();
+    await Promise.all([
+        InventoryTransactionModel.deleteMany({
+            inventoryItemId,
+            inventoryItemTransactionIndex: { $gte: inventoryItemTransactionIndex },
+            isActive: true
+        }).exec(),
+        deleteActiveFinancialTransactionsWithIndexEqualOrLarger(inventoryItemId, inventoryItemTransactionIndex)
+    ]);
     return 'OK';
 }
 
@@ -331,13 +341,16 @@ const deleteActiveInventoryTransactionsWithIndexEqualOrLarger = async (
 const deleteInactiveInventoryTransaction = async (
     inventoryTransactionId: string
 ) : Promise<'OK'> => {
-    await InventoryTransactionModel.deleteMany({
-        transactionIdForcingDerivation: inventoryTransactionId,
-        isActive: false
-    }).exec();
-    await InventoryTransactionModel.findByIdAndDelete(inventoryTransactionId).where({
-        isActive: false
-    }).exec();
+    await Promise.all([
+        InventoryTransactionModel.deleteMany({
+            transactionIdForcingDerivation: inventoryTransactionId,
+            isActive: false
+        }).exec(),
+        InventoryTransactionModel.findByIdAndDelete(inventoryTransactionId).where({
+            isActive: false
+        }).exec(),
+        deleteInactiveFinancialTransaction(inventoryTransactionId)
+    ]);
     return 'OK';
 }
 
@@ -350,7 +363,8 @@ const deriveSubsequentInventoryTransactions = async (
     iterationLimit: number
 ): Promise<'OK'> => {
     if (currentIteration > iterationLimit) {
-        return 'OK';
+        throw new Error('Limit iteraci pro upravu naslednych transakci prekrocen');
+        ;
     }
     const subsequentInventoryTransaction: IInventoryTransaction<any> | null = await getFirstInventoryTransactionWithIndexGreaterThanOrEqual(
         currentInventoryTransaction

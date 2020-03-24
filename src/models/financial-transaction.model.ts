@@ -2,13 +2,17 @@ import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 
 export interface INewFinancialTrasactionData {
-    inventoryTransactionId: string;
     inventoryItemId: string;
     financialUnitId: string;
     debitAccountId: string;
     creditAccountId: string;
     effectiveDate: Date;
     amount: number;
+    inventoryTransactionId: string;
+    inventoryItemTransactionIndex: number;
+    isDerivedTransaction: boolean;
+    inventoryTransactionIdForcingDerivation: string | null;
+    isActive?: boolean;
 }
 
 export interface IFinancialTransaction extends INewFinancialTrasactionData, Document {};
@@ -29,6 +33,10 @@ const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
         ref: 'InventoryTransaction',
         required: true
     },
+    inventoryItemTransactionIndex: {
+        type: Number,
+        required: true
+    },
     debitAccountId: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialAccount',
@@ -46,7 +54,20 @@ const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
     amount: {
         type: Number,
         required: true
-    }
+    },
+    isDerivedTransaction: {
+        type: Boolean,
+        required: true,        
+    },
+    inventoryTransactionIdForcingDerivation: {
+        type: Schema.Types.ObjectId,
+        ref: 'InventoryTransaction',
+        default: null
+    },
+    isActive: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 export const FinancialTransactionModel = mongoose.model<IFinancialTransaction>(
