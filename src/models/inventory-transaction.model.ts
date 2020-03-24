@@ -45,14 +45,13 @@ export interface INewInventoryTransaction<SpecificData> {
     debitAccountId: string;
     creditAccountId: string;
     specificData: SpecificData;
+    totalTransactionAmount: number;
     stock: IStockBatch[];
-    // previousTransactionId: string | null;
     financialUnitId: string;
     inventoryItemTransactionIndex: number;
     isDerivedTransaction: boolean;
     transactionIdForcingDerivation: string | null;
     isActive?: boolean;
-    isFirst?: boolean
 }
 
 export interface IInventoryTransaction<SpecificData> extends INewInventoryTransaction<SpecificData>, Document {}
@@ -67,10 +66,6 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         ref: 'InventoryItem',
         required: true
     },
-    // previousTransactionId: {
-    //     type: Schema.Types.ObjectId,
-    //     ref: 'InventoryTransaction'
-    // },
     financialUnitId: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialUnit',
@@ -98,8 +93,12 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         ref: 'FinancialAccount',
         required: true
     },
+    totalTransactionAmount: {
+        type: Number,
+        required: true
+    },
     stock: {
-        type: [{ quantity: Number, costPerUnit: Number, added: Date }],
+        type: [{ quantity: Number, costPerUnit: Number, added: Date, transactionIndex: Number }],
         required: true
     },
     specificData: {
@@ -119,10 +118,6 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         type: Boolean,
         default: false,
     },
-    isFirst: {
-        type: Boolean,
-        default: false
-    }
 });
 
 export const InventoryTransactionModel = mongoose.model<IInventoryTransaction<any>>(

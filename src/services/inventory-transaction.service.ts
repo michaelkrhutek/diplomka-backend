@@ -12,6 +12,7 @@ import { IInventoryItem, StockDecrementType } from "../models/inventory-item.mod
 import { getInventoryItem, getInventoryItemStockDecrementType } from "./inventory-item.service";
 import { createFinancialTransaction } from "./financial-transaction.service";
 import { INewFinancialTrasactionData, FinancialTransactionModel } from "../models/financial-transaction.model";
+import { Error } from "mongoose";
 
 
 
@@ -20,7 +21,11 @@ const getLastInventoryTransactionTillEffectiveDate = async (
     effectiveDate: Date
 ): Promise<IInventoryTransaction<any> | null> => {
     const inventoryTransaction: IInventoryTransaction<any> | null = await InventoryTransactionModel
-        .findOne({ inventoryItemId, effectiveDate: { $lte: effectiveDate } })
+        .findOne({
+            inventoryItemId,
+            effectiveDate: { $lte: effectiveDate },
+            isActive: true
+        })
         // .where({ effectiveDate: { $lte: effectiveDate } })
         .sort({ inventoryItemTransactionIndex: -1 })
         .exec().catch((err) => {
@@ -37,7 +42,11 @@ const getInventoryTransactionByTransactionIndex = async (
     inventoryItemTransactionIndex: number
 ): Promise<IInventoryTransaction<any> | null> => {
     const inventoryTransaction: IInventoryTransaction<any> | null = await InventoryTransactionModel
-        .findOne({ inventoryItemId, inventoryItemTransactionIndex })
+        .findOne({
+            inventoryItemId,
+            inventoryItemTransactionIndex,
+            isActive: true
+        })
         .exec().catch((err) => {
             console.error(err);
             throw ('Chyba při načítaní skladové transakce');     
@@ -69,29 +78,16 @@ const getPreviousInventoryTransaction = async (
 
 
 
-const getFirstInventoryItemInventoryTransaction = async (
-    inventoryItemId: string,
-    effectiveDate: Date
-): Promise<IInventoryTransaction<any> | null> => {
-    const inventoryTransaction: IInventoryTransaction<any> | null = await InventoryTransactionModel
-        .findOne({ inventoryItemId, isFirst: true })
-        .exec().catch((err) => {
-            console.error(err);
-            throw (`Chyba při načítaní předchozí skladové transakce skladové položky s ID ${inventoryItemId}`);     
-        });
-    return inventoryTransaction;
-}
-
-
-
-const getSubsequentInventoryTransaction = async (
+const getFirstInventoryTransactionWithIndexGreaterThanOrEqual = async (
     currentInventoryTransaction: IInventoryTransaction<any>
 ): Promise<IInventoryTransaction<any> | any> => {
     const inventoryTransaction: IInventoryTransaction<any> | null = await InventoryTransactionModel
     .findOne({
         inventoryItemId: currentInventoryTransaction.inventoryItemId,
-        inventoryItemTransactionIndex: currentInventoryTransaction.inventoryItemTransactionIndex
+        inventoryItemTransactionIndex: { $gte: currentInventoryTransaction.inventoryItemTransactionIndex },
+        isActive: true
     })
+    .sort({ inventoryItemTransactionIndex: 1 })
     .exec().catch((err) => {
         console.error(err);
         throw (`Chyba při načítaní skladové transakce následující po transakci`);     
@@ -114,22 +110,6 @@ const insertInventoryTransactionToDb = async <SpecificData>(
 
 
 
-const getNewStockBatchAddedDate = (stock: IStockBatch[], newStockBatchEffectiveDate: Date): Date => {
-    if (stock.length == 0) {
-        const newStockBatchEffectiveDateTime: Date = new Date(newStockBatchEffectiveDate.getDate());
-        newStockBatchEffectiveDateTime.setHours(0);
-        newStockBatchEffectiveDateTime.setMinutes(0);
-        newStockBatchEffectiveDateTime.setSeconds(0);
-        newStockBatchEffectiveDateTime.setMilliseconds(0);
-        return newStockBatchEffectiveDateTime;
-    }
-    const lastStockBatchEffetiveDateTime: Date = stock
-        .sort((a, b) => b.added.getTime() - a.added.getTime())[0].added;
-    return new Date(lastStockBatchEffetiveDateTime.getTime() + 1);
-}
-
-
-
 const createIncrementInventoryTransaction = async (
     requestData: INewInventoryTransactionRequestData<IIncrementInventoryTransactionSpecificData>,
     previousInventoryTransaction: IInventoryTransaction<any> | null,
@@ -144,10 +124,11 @@ const createIncrementInventoryTransaction = async (
     const newStockBatch: IStockBatch = {
         quantity: requestData.specificData.quantity,
         costPerUnit: requestData.specificData.costPerUnit,
-        added: getNewStockBatchAddedDate(currentStock, requestData.effectiveDate),
+        added: new Date(requestData.effectiveDate),
         transactionIndex: inventoryItemTransactionIndex
     };
     const stock: IStockBatch[] = [...currentStock, newStockBatch];
+    const totalTransactionAmount: number = requestData.specificData.quantity * requestData.specificData.costPerUnit;
     const newTransactionData: INewInventoryTransaction<IIncrementInventoryTransactionSpecificData> = {
         type: InventoryTransactionType.Increment,
         description: requestData.description,
@@ -155,6 +136,7 @@ const createIncrementInventoryTransaction = async (
         financialUnitId: inventoryItem.financialUnitId,
         debitAccountId: requestData.debitAccountId,
         creditAccountId: requestData.creditAccountId,
+        totalTransactionAmount,
         effectiveDate: requestData.effectiveDate,
         inventoryItemTransactionIndex,
         specificData: requestData.specificData,
@@ -165,7 +147,6 @@ const createIncrementInventoryTransaction = async (
         isActive: false
     };
     const inventoryTransaction: IInventoryTransaction<IIncrementInventoryTransactionSpecificData> = await insertInventoryTransactionToDb(newTransactionData);
-    const amount: number = requestData.specificData.quantity * requestData.specificData.costPerUnit;
     const newFinancialTransactionData: INewFinancialTrasactionData = {
         inventoryTransactionId: inventoryTransaction.id,
         inventoryItemId: inventoryItem.id,
@@ -173,7 +154,7 @@ const createIncrementInventoryTransaction = async (
         effectiveDate: requestData.effectiveDate,
         debitAccountId: requestData.debitAccountId,
         creditAccountId: requestData.creditAccountId,
-        amount
+        amount: totalTransactionAmount
     };
     await createFinancialTransaction(newFinancialTransactionData);
     return inventoryTransaction;
@@ -253,17 +234,17 @@ const createDecrementInventoryTransaction = async (
     const stockDecrementType: StockDecrementType = await getInventoryItemStockDecrementType(inventoryItem.id);
     const stockDecrementResult: IStockDecrementResult = getStockDecrementResult(currentStock, requestData.specificData.quantity, stockDecrementType);
     const newInventoryTransactionData: INewInventoryTransaction<IDecrementInventoryTransactionSpecificData> = {
-        type: InventoryTransactionType.Increment,
+        type: InventoryTransactionType.Decrement,
         description: requestData.description,
         inventoryItemId: inventoryItem.id,
         financialUnitId: inventoryItem.financialUnitId,
         debitAccountId: requestData.debitAccountId,
         creditAccountId: requestData.creditAccountId,
+        totalTransactionAmount: stockDecrementResult.totalCost,
         effectiveDate: requestData.effectiveDate,
         inventoryItemTransactionIndex,
         specificData: requestData.specificData,
         stock: stockDecrementResult.stock,
-        // previousTransactionId: previousInventoryTransaction ? previousInventoryTransaction.id : null,
         isDerivedTransaction: !!transactionIdForcingDerivation,
         transactionIdForcingDerivation,
         isActive: false
@@ -321,7 +302,7 @@ const createInactiveInventoryTransaction = async (
 
 
 
-const activeCreatedInventoryTransactions = async (
+const activateCreatedInventoryTransactions = async (
     newInventoryTransactionId: string
 ): Promise<'OK'> => {
     await Promise.all([
@@ -339,7 +320,7 @@ const deleteActiveInventoryTransactionsWithIndexEqualOrLarger = async (
 ): Promise<'OK'> => {
     await InventoryTransactionModel.deleteMany({
         inventoryItemId,
-        inventoryItemTransactionIndex: { $lte: inventoryItemTransactionIndex },
+        inventoryItemTransactionIndex: { $gte: inventoryItemTransactionIndex },
         isActive: true
     }).exec();
     return 'OK';
@@ -347,11 +328,33 @@ const deleteActiveInventoryTransactionsWithIndexEqualOrLarger = async (
 
 
 
-export const deriveSubsequentInventoryTransactions = async (
+const deleteInactiveInventoryTransaction = async (
+    inventoryTransactionId: string
+) : Promise<'OK'> => {
+    await InventoryTransactionModel.deleteMany({
+        transactionIdForcingDerivation: inventoryTransactionId,
+        isActive: false
+    }).exec();
+    await InventoryTransactionModel.findByIdAndDelete(inventoryTransactionId).where({
+        isActive: false
+    }).exec();
+    return 'OK';
+}
+
+
+
+const deriveSubsequentInventoryTransactions = async (
     currentInventoryTransaction: IInventoryTransaction<any>,
-    inventoryTransactionIdForcingDerivation: string
+    inventoryTransactionIdForcingDerivation: string,
+    currentIteration: number,
+    iterationLimit: number
 ): Promise<'OK'> => {
-    const subsequentInventoryTransaction: IInventoryTransaction<any> | null = await getSubsequentInventoryTransaction(currentInventoryTransaction);
+    if (currentIteration > iterationLimit) {
+        return 'OK';
+    }
+    const subsequentInventoryTransaction: IInventoryTransaction<any> | null = await getFirstInventoryTransactionWithIndexGreaterThanOrEqual(
+        currentInventoryTransaction
+    );
     if (!subsequentInventoryTransaction) {
         return 'OK';
     }
@@ -369,7 +372,12 @@ export const deriveSubsequentInventoryTransactions = async (
         currentInventoryTransaction,
         inventoryTransactionIdForcingDerivation
     );
-    return await deriveSubsequentInventoryTransactions(derivedSubsequentInventoryTransaction, inventoryTransactionIdForcingDerivation);
+    return await deriveSubsequentInventoryTransactions(
+        derivedSubsequentInventoryTransaction,
+        inventoryTransactionIdForcingDerivation,
+        currentIteration + 1,
+        iterationLimit
+    );
 }
 
 
@@ -383,13 +391,25 @@ export const createInventoryTransaction = async (
     );
     const newInventoryTransaction: IInventoryTransaction<any> = await createInactiveInventoryTransaction(
         type, requestData, previousInventoryTransaction, null
-    );
-    await deriveSubsequentInventoryTransactions(newInventoryTransaction, newInventoryTransaction.id);
+    ).catch((err) => {
+        console.error(err);
+        deleteInactiveInventoryTransaction(newInventoryTransaction.id);
+        throw new Error('Chyba pri vytvareni nove transakce');
+    });
+    await deriveSubsequentInventoryTransactions(newInventoryTransaction, newInventoryTransaction.id, 1, 10).catch((err) => {
+        console.error(err);
+        deleteInactiveInventoryTransaction(newInventoryTransaction.id);
+        throw new Error('Chyba pri prepocitavani naslednych transakci');
+    }).catch((err) => {
+        console.error(err);
+        deleteInactiveInventoryTransaction(newInventoryTransaction.id);
+        throw new Error('Chyba pri odstranovani puvodnich naslednych transakci');
+    });
     await deleteActiveInventoryTransactionsWithIndexEqualOrLarger(
         newInventoryTransaction.inventoryItemId,
         newInventoryTransaction.inventoryItemTransactionIndex
     );
-    await activeCreatedInventoryTransactions(newInventoryTransaction.id);
+    await activateCreatedInventoryTransactions(newInventoryTransaction.id);
     return newInventoryTransaction;
 }
 
