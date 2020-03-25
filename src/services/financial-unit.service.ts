@@ -18,14 +18,9 @@ export const getIsFinancialUnitExist = async (financialUnitId: string): Promise<
 
 
 const generateDefaultDataInFinancialUnit = async (financialUnitId: string): Promise<void> => {
-    const startDate: Date = new Date();
-    startDate.setDate(1);
-    startDate.setMonth(0);
-    startDate.setHours(0,0,0,0);
-    const endDate: Date = new Date();
-    endDate.setDate(31);
-    endDate.setMonth(11);
-    endDate.setHours(23,59,59,999);
+    const year: number = new Date().getFullYear();
+    const startDate: Date = new Date(new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0)));
+    const endDate: Date = new Date(new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999)));
     await financialPeriodService.createFinancialPeriod({ name: 'Ucetni obdobi 1', financialUnitId, startDate, endDate });
     const financialAccounts: IFinancialAccountDoc[] = await financialAccountService
         .createDefaultFinancialAccounts(financialUnitId, defaultAccounts);
