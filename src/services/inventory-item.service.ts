@@ -1,23 +1,21 @@
-import { InventoryItemModel, IInventoryItemDoc, INewInventoryItemData, StockDecrementType } from '../models/inventory-item.model';
+import { InventoryItemModel, IInventoryItemDoc, INewInventoryItemData } from '../models/inventory-item.model';
+import * as financialUnitService from './financial-unit.service';  
+import * as inventoryGroupService from './inventory-group.service';
 
 
-
-export const parseStockDecrementType = (typeAsString: string): StockDecrementType | null => {
-    switch (typeAsString) {
-        case StockDecrementType.FIFO:
-            return StockDecrementType.FIFO;
-        case StockDecrementType.LIFO:
-            return StockDecrementType.LIFO;
-        case StockDecrementType.Average:
-            return StockDecrementType.Average;
-        default:
-            return null;
-    }
+export const getIsInventoryItemExist = async (inventoryItemId: string, financialUnitId: string): Promise<boolean> => {
+    return await InventoryItemModel.exists({ _id: inventoryItemId, financialUnitId });
 }
 
 
 
 export const createInventoryItem = async (data: INewInventoryItemData): Promise<IInventoryItemDoc> => {
+    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnitId))) {
+        throw new Error('Ucetni jednotka s danym ID nenalezena');
+    }
+    if (!(await inventoryGroupService.getIsInventoryGroupExist(data.inventoryGroupId, data.financialUnitId))) {
+        throw new Error('Skupina zasob s danym ID v dane ucetni jednotce nenalezena');
+    }
     const inventoryItem: IInventoryItemDoc = await new InventoryItemModel(data).save()
         .catch((err) => {
             console.error(err);
@@ -47,16 +45,6 @@ export const getInventoryItem = async (inventoryItemId: string): Promise<IInvent
         });
     return inventoryItem;
 }
-
-
-
-export const getInventoryItemStockDecrementType = async (inventoryItemId: string): Promise<StockDecrementType | null> => {
-    const StockDecrementType: StockDecrementType | null  = await InventoryItemModel
-        .findById(inventoryItemId)
-        .select({ defaultStockDecrementType: 1 })
-        .lean();
-    return StockDecrementType;
-} 
 
 
 

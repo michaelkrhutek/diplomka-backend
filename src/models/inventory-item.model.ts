@@ -2,16 +2,10 @@ import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 
-export enum StockDecrementType {
-    FIFO = 'fifo',
-    LIFO = 'lifo',
-    Average = 'average'
-}
-
 export interface INewInventoryItemData {
     name: string;
     financialUnitId: string;
-    defaultStockDecrementType: StockDecrementType
+    inventoryGroupId: string;
 }
 
 export interface IInventoryItem extends INewInventoryItemData, IPlainMongooseDoc {};
@@ -27,10 +21,11 @@ const InventoryItemSchema = new Schema<IInventoryItem>({
         ref: 'FinancialUnit',
         required: true
     },
-    defaultStockDecrementType: {
-        type: String,
+    inventoryGroupId: {
+        type: Schema.Types.ObjectId,
+        ref: 'InventoryGroup',
         required: true
-    }
+    },
 });
 
 export const InventoryItemModel = mongoose.model<IInventoryItemDoc>(

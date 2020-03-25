@@ -4,6 +4,7 @@ import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 
 export interface INewFinancialAccountData {
     name: string;
+    code: string;
     financialUnitId: string;
 }
 
@@ -12,6 +13,10 @@ export interface IFinancialAccountDoc extends INewFinancialAccountData, Document
 
 const FinancialAccountSchema = new Schema<IFinancialAccount>({
     name: {
+        type: String,
+        required: true
+    },
+    code: {
         type: String,
         required: true
     },

@@ -1,8 +1,37 @@
 import { FinancialAccountModel, IFinancialAccountDoc, INewFinancialAccountData } from '../models/financial-account.model';
+import * as financialUnitService from './financial-unit.service';  
+import { IDefaultFinancialAccountData } from '../default-data';
+
+
+
+export const getIsFinancialAccountExist = async (financialAccountId: string, financialUnitId: string): Promise<boolean> => {
+    return await FinancialAccountModel.exists({ _id: financialAccountId, financialUnitId });
+}
+
+
+
+export const createDefaultFinancialAccounts = async (
+    financialUnitId: string,
+    rawData: IDefaultFinancialAccountData[]
+): Promise<IFinancialAccountDoc[]> => {
+    const data: INewFinancialAccountData[] = rawData.map((acc => {
+        const newAccountData: INewFinancialAccountData = {
+            name: acc.name,
+            code: acc.code,
+            financialUnitId
+        };
+        return newAccountData;
+    }));
+    const financialAccounts: IFinancialAccountDoc[] = await FinancialAccountModel.insertMany(data);
+    return financialAccounts;
+}
 
 
 
 export const createFinancialAccount = async (data: INewFinancialAccountData): Promise<IFinancialAccountDoc> => {
+    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnitId))) {
+        throw new Error('Ucetni jednotka s danym ID neexistuje');
+    }
     const financialAccount: IFinancialAccountDoc = await new FinancialAccountModel(data).save()
         .catch((err) => {
             console.error(err);

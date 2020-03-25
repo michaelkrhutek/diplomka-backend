@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { InventoryTransactionType } from '../models/inventory-transaction.model';
+import { InventoryTransactionType, INewInventoryTransactionRequestData } from '../models/inventory-transaction.model';
 import { createInventoryTransaction, getAllInventoryTransactions } from '../services/inventory-transaction.service';
 
 const router: Router = Router();
@@ -18,7 +18,7 @@ router.get('/get-all-inventory-transactions', (req: Request, res: Response) => {
 
 router.post('/create-inventory-transaction', (req: Request, res: Response) => {
     const type: InventoryTransactionType = req.query.type;
-    const data: any = req.body;
+    const data: INewInventoryTransactionRequestData<any> = req.body;
     createInventoryTransaction(type, data)
         .then((inventoryTransaction) => {
             res.send(inventoryTransaction);

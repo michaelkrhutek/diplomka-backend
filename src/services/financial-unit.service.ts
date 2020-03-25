@@ -1,8 +1,36 @@
 import { FinancialUnitModel, IFinancialUnitDoc, INewFinancialUnitData } from '../models/financial-unit.model';
 import * as financialAccountService from './financial-account.service';
 import * as financialTransactionService from './financial-transaction.service';
+import * as inventoryGroupService  from './inventory-group.service';
 import * as inventoryItemService  from './inventory-item.service';
+import * as inventoryTransactionTemplateService from './inventory-transaction-template.service';
 import * as inventoryTransactionService from './inventory-transaction.service';
+import * as financialPeriodService from './financial-period.service';
+import { IFinancialAccountDoc } from '../models/financial-account.model';
+import { defaultAccounts, defaultInventoryGroups } from '../default-data';
+
+
+
+export const getIsFinancialUnitExist = async (financialUnitId: string): Promise<boolean> => {
+    return await FinancialUnitModel.exists({ _id: financialUnitId });
+}
+
+
+
+const generateDefaultDataInFinancialUnit = async (financialUnitId: string): Promise<void> => {
+    const startDate: Date = new Date();
+    startDate.setDate(1);
+    startDate.setMonth(0);
+    startDate.setHours(0,0,0,0);
+    const endDate: Date = new Date();
+    endDate.setDate(31);
+    endDate.setMonth(11);
+    endDate.setHours(23,59,59,999);
+    await financialPeriodService.createFinancialPeriod({ name: 'Ucetni obdobi 1', financialUnitId, startDate, endDate });
+    const financialAccounts: IFinancialAccountDoc[] = await financialAccountService
+        .createDefaultFinancialAccounts(financialUnitId, defaultAccounts);
+    await inventoryGroupService.createDefaultInventoryGroups(financialUnitId, defaultInventoryGroups, financialAccounts);
+}
 
 
 
@@ -10,6 +38,12 @@ export const createFinancialUnit = async (data: INewFinancialUnitData): Promise<
     const financialUnit: IFinancialUnitDoc = await new FinancialUnitModel(data).save()
         .catch((err) => {
             console.error(err);
+            throw new Error('Chyba při vytváření účetní jednotky');
+        });
+    await generateDefaultDataInFinancialUnit(financialUnit._id.toString())
+        .catch((err) => {
+            console.error(err);
+            deleteFinancialUnit(financialUnit._id.toString());
             throw new Error('Chyba při vytváření účetní jednotky');
         });
     return financialUnit;
@@ -44,8 +78,11 @@ export const deleteFinancialUnit = async (financialUnitId: string): Promise<'OK'
         .then((_res) => {
             financialAccountService.deleteAllFinancialAccounts(financialUnitId);
             financialTransactionService.deleteAllFinancialTransactions(financialUnitId);
+            inventoryGroupService.deleteAllInventoryGroups(financialUnitId);
             inventoryItemService.deleteAllInventoryItems(financialUnitId);
+            inventoryTransactionTemplateService.deleteAllInventoryTransactionTemplates(financialUnitId);
             inventoryTransactionService.deleteAllInventoryTransactions(financialUnitId);
+            financialPeriodService.deleteAllFinancialPeriods(financialUnitId);
         })
         .catch((err) => {
             console.error(err);

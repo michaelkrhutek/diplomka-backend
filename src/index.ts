@@ -3,8 +3,10 @@ import { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 
 import financialUnitRouter from './routes/financial-unit.route';
+import financialPeriodRouter from './routes/financial-period.route';
 import financialAccountRouter from './routes/financial-account.route';
 import financialTransactionRouter from './routes/financial-transaction.route';
+import inventoryGroupRouter from './routes/inventory-group.route';
 import inventoryItemRouter from './routes/inventory-item.route';
 import inventoryTransactionRouter from './routes/inventory-transaction.route';
 
@@ -21,8 +23,10 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 app.use('/api/financial-unit', financialUnitRouter);
+app.use('/api/financial-period', financialPeriodRouter);
 app.use('/api/financial-account', financialAccountRouter);
 app.use('/api/financial-transaction', financialTransactionRouter);
+app.use('/api/inventory-group', inventoryGroupRouter);
 app.use('/api/inventory-item', inventoryItemRouter);
 app.use('/api/inventory-transaction', inventoryTransactionRouter);
 

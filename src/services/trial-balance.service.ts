@@ -47,11 +47,9 @@ const getAccountsTurnovers = (
 
 export const getTrialBalance = async (
     financialUnitId: string,
-    approximateStartDate: Date,
-    approximateEndDate: Date
+    startDate: Date,
+    endDate: Date
 ): Promise<ITrialBalance> => {
-    const startDate: Date = utilitiesService.getUTCDate(approximateStartDate);
-    const endDate: Date = utilitiesService.getUTCDate(approximateEndDate, false);
     const accountsTurnovers: IAccountTurnover[] = await Promise.all([
         getAccountsTurnovers(financialUnitId, 'debit', startDate, endDate),
         getAccountsTurnovers(financialUnitId, 'credit', startDate, endDate)

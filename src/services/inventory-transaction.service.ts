@@ -1,18 +1,22 @@
 import {
     IInventoryTransactionDoc,
     InventoryTransactionModel,
-    IStockBatch, INewInventoryTransaction,
+    INewInventoryTransaction,
     InventoryTransactionType,
-    IStockQuantityChangeResult,
     IDecrementInventoryTransactionSpecificData,
     INewInventoryTransactionRequestData,
     IIncrementInventoryTransactionSpecificData,
 } from "../models/inventory-transaction.model";
-import { IInventoryItemDoc, StockDecrementType } from "../models/inventory-item.model";
+import { IInventoryItemDoc } from "../models/inventory-item.model";
 import * as inventoryItemService from "./inventory-item.service";
 import * as financialTransactionService from "./financial-transaction.service";
+import * as financialPeriodService from "./financial-period.service";
+import * as inventoryGroupService from './inventory-group.service';
+import * as stockService from './stock.service';
 import * as utilitiesService from './utilities.service';
 import { INewFinancialTrasactionData, FinancialTransactionModel } from "../models/financial-transaction.model";
+import { IStockBatch, StockDecrementType, IStockQuantityChangeResult } from "../models/stock.model";
+import { Error } from "mongoose";
 
 
 
@@ -118,7 +122,13 @@ const createIncrementInventoryTransaction = async (
     if (!inventoryItem) {
         throw new Error(`Skladová položka s ID ${requestData.inventoryItemId} neexistuje`);
     }
-    if (!inventoryItem.defaultStockDecrementType) {
+    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnitId, requestData.effectiveDate))) {
+        throw new Error('Ucetni obdobi s danym datumem nenalezeno');
+    }
+    const stockDecrementType: StockDecrementType | null = await inventoryGroupService.getInventoryGroupStockDecrementType(
+        inventoryItem.inventoryGroupId
+    );
+    if (!stockDecrementType) {
         throw new Error(`Nenalezena ocenovaci metod pro vyskladneni`);
     }
     const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
@@ -133,7 +143,7 @@ const createIncrementInventoryTransaction = async (
         added: new Date(requestData.effectiveDate),
         transactionIndex: inventoryItemTransactionIndex
     };
-    const stock: IStockBatch[] = getSortedStock([...currentStock, newStockBatch], inventoryItem.defaultStockDecrementType);
+    const stock: IStockBatch[] = stockService.getSortedStock([...currentStock, newStockBatch], stockDecrementType);
     const totalTransactionAmount: number = utilitiesService.getRoundedNumber(
         requestData.specificData.quantity * requestData.specificData.costPerUnit, 2
     );
@@ -172,79 +182,6 @@ const createIncrementInventoryTransaction = async (
 
 
 
-const getSortedStock = (stock: IStockBatch[], stockDecrementType: StockDecrementType): IStockBatch[] => {
-    if (stock.length == 0) {
-        return [];
-    } else if (stockDecrementType == StockDecrementType.FIFO) {
-        return stock.sort((a, b) => a.transactionIndex - b.transactionIndex);
-    } else if (stockDecrementType == StockDecrementType.LIFO) {
-        return stock.sort((a, b) => b.transactionIndex - a.transactionIndex);
-    } else if (stockDecrementType == StockDecrementType.Average) {
-        const totalStockQuantity: number = stock
-            .map(batch => batch.quantity)
-            .reduce((acc, val) => acc + val, 0);
-        const totalStockCost: number = stock
-            .map(batch => batch.quantity * batch.costPerUnit)
-            .reduce((acc, val) => acc + val, 0);
-        const costPerUnit: number = totalStockQuantity ? totalStockCost / totalStockQuantity : 0;
-        return [{ quantity: totalStockQuantity, costPerUnit, added: new Date(), transactionIndex: 0 }];
-    } else {
-        throw new Error('Neznámá oceňovací metoda pro vyskladnění');
-    }
-}
-
-
-
-const getStockDecrementResult = (
-    unorderedCurrentStock: IStockBatch[],
-    quantityToRemove: number,
-    stockDecrementType: StockDecrementType
-): IStockQuantityChangeResult => {
-    const currentStockQuantity: number = unorderedCurrentStock
-        .map((stockBatch) => stockBatch.quantity)
-        .reduce((acc, val) => acc + val, 0);
-    if (currentStockQuantity < quantityToRemove) {
-        throw new Error('Nedostačné množství pro vyskladnění');
-    }
-    const currentStock: IStockBatch[] = getSortedStock(unorderedCurrentStock, stockDecrementType);
-    let quantityToRemoveLeft: number = quantityToRemove;
-    let changeCost: number = 0;
-    const unfiltredStock: IStockBatch[] = currentStock.map((batch): IStockBatch => {
-        if (quantityToRemoveLeft == 0) {
-            const { quantity, costPerUnit, added } = batch;
-            return {
-                quantity,
-                costPerUnit,
-                added,
-                transactionIndex: batch.transactionIndex
-            };
-        } else if (batch.quantity < quantityToRemoveLeft) {
-            changeCost += batch.quantity * batch.costPerUnit;
-            quantityToRemoveLeft = quantityToRemoveLeft - batch.quantity;
-            return {
-                quantity: 0,
-                costPerUnit: batch.costPerUnit,
-                added: batch.added,
-                transactionIndex: batch.transactionIndex
-            };
-        } else {
-            const newBatchQuantity: number = batch.quantity - quantityToRemoveLeft;
-            changeCost += quantityToRemoveLeft * batch.costPerUnit;
-            quantityToRemoveLeft = 0;
-            return {
-                quantity: newBatchQuantity,
-                costPerUnit: batch.costPerUnit,
-                added: batch.added,
-                transactionIndex: batch.transactionIndex
-            };
-        }
-    })
-    const stock: IStockBatch[] = unfiltredStock.filter((batch) => batch.quantity > 0);
-    return { stock, changeCost: utilitiesService.getRoundedNumber(changeCost, 2) };
-}
-
-
-
 const createDecrementInventoryTransaction = async (
     requestData: INewInventoryTransactionRequestData<IDecrementInventoryTransactionSpecificData>,
     previousInventoryTransaction: IInventoryTransactionDoc<any> | null,
@@ -254,8 +191,14 @@ const createDecrementInventoryTransaction = async (
     if (!inventoryItem) {
         throw new Error(`Skladová položka s ID ${requestData.inventoryItemId} neexistuje`);
     }
-    if (!inventoryItem.defaultStockDecrementType) {
-        throw new Error(`Nenalezena ocenovaci metod pro vyskladneni`);
+    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnitId, requestData.effectiveDate))) {
+        throw new Error('Ucetni obdobi s danym datumem nenalezeno');
+    }
+    const stockDecrementType: StockDecrementType | null = await inventoryGroupService.getInventoryGroupStockDecrementType(
+        inventoryItem.inventoryGroupId
+    );
+    if (!stockDecrementType) {
+        throw new Error(`Nenalezena ocenovaci metoda`);
     }
     const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
         previousInventoryTransaction.inventoryItemTransactionIndex + 1 :
@@ -263,8 +206,8 @@ const createDecrementInventoryTransaction = async (
     const currentStock: IStockBatch[] = previousInventoryTransaction ?
         previousInventoryTransaction.stock :
         [];
-    const stockDecrementResult: IStockQuantityChangeResult = getStockDecrementResult(
-        currentStock, requestData.specificData.quantity, inventoryItem.defaultStockDecrementType
+    const stockDecrementResult: IStockQuantityChangeResult = stockService.getStockDecrementResult(
+        currentStock, requestData.specificData.quantity, stockDecrementType
     );
     const newInventoryTransactionData: INewInventoryTransaction<IDecrementInventoryTransactionSpecificData> = {
         type: InventoryTransactionType.Decrement,
@@ -301,7 +244,7 @@ const createDecrementInventoryTransaction = async (
 
 
 
-const getCreateInactiveInventoryTransaction = (
+const createInactiveInventoryTransaction = async (
     type: InventoryTransactionType,
     requestData: INewInventoryTransactionRequestData<any>,
     previousTransaction: IInventoryTransactionDoc<any> | null,
@@ -309,13 +252,13 @@ const getCreateInactiveInventoryTransaction = (
 ): Promise<IInventoryTransactionDoc<any>> => {
     switch (type) {
         case InventoryTransactionType.Increment:
-            return createIncrementInventoryTransaction(
+            return await createIncrementInventoryTransaction(
                 requestData as INewInventoryTransactionRequestData<IIncrementInventoryTransactionSpecificData>,
                 previousTransaction,
                 transactionIdForcingDerivation
             );
         case InventoryTransactionType.Decrement:
-            return createDecrementInventoryTransaction(
+            return await createDecrementInventoryTransaction(
                 requestData as INewInventoryTransactionRequestData<IDecrementInventoryTransactionSpecificData>,
                 previousTransaction,
                 transactionIdForcingDerivation
@@ -323,19 +266,6 @@ const getCreateInactiveInventoryTransaction = (
         default:
             throw new Error('Neznámý typ skladové transakce');
     }
-}
-
-
-
-const createInactiveInventoryTransaction = async (
-    type: InventoryTransactionType,
-    requestData: INewInventoryTransactionRequestData<any>,
-    previousTransaction: IInventoryTransactionDoc<any> | null,
-    transactionIdForcingDerivation: string | null
-): Promise<IInventoryTransactionDoc<any>> => {
-    return await getCreateInactiveInventoryTransaction(
-        type, requestData, previousTransaction, transactionIdForcingDerivation
-    );
 }
 
 

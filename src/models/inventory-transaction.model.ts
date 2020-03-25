@@ -1,23 +1,7 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
-
-export interface IStockBatch {
-    quantity: number;
-    costPerUnit: number;
-    added: Date;
-    transactionIndex: number;
-}
-
-export interface IStockQuantityChangeResult {
-    stock: IStockBatch[];
-    changeCost: number;
-}
-
-export interface IStockMetrics {
-    totalCost: number;
-    totalQuantity: number;
-}
+import { IStockBatch } from './stock.model';
 
 export enum InventoryTransactionType {
     Increment = 'increment',

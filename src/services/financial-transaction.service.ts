@@ -1,21 +1,20 @@
 import { FinancialTransactionModel, INewFinancialTrasactionData, IFinancialTransactionDoc } from '../models/financial-transaction.model';
 import { Error } from 'mongoose';
-
-
-
-export const createActiveFinancialTransaction = async (data: INewFinancialTrasactionData): Promise<IFinancialTransactionDoc> => {
-    data.isActive = true;
-    const financialTransaction: IFinancialTransactionDoc = await new FinancialTransactionModel(data).save()
-        .catch((err) => {
-            console.error(err);
-            throw new Error('Chyba při ukládání účetního zápisu');
-        });
-    return financialTransaction;
-}
+import * as financialPeriodService from './financial-period.service';
+import * as financialAccountService from './financial-account.service';
 
 
 
 export const createInactiveFinancialTransaction = async (data: INewFinancialTrasactionData): Promise<IFinancialTransactionDoc> => {
+    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(data.financialUnitId, data.effectiveDate))) {
+        throw new Error('Ucetni obdobi s danym datem nenalezeno');   
+    }
+    if (!(await financialAccountService.getIsFinancialAccountExist(data.debitAccountId, data.financialUnitId))) {
+        throw new Error('Financni ucet s danym ID nenalezen');   
+    }
+    if (!(await financialAccountService.getIsFinancialAccountExist(data.creditAccountId, data.financialUnitId))) {
+        throw new Error('Financni ucet s danym ID nenalezen');   
+    }
     data.isActive = false;
     const financialTransaction: IFinancialTransactionDoc = await new FinancialTransactionModel(data).save()
         .catch((err) => {
