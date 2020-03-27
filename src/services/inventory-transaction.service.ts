@@ -14,8 +14,8 @@ import * as financialPeriodService from "./financial-period.service";
 import * as inventoryGroupService from './inventory-group.service';
 import * as stockService from './stock.service';
 import * as utilitiesService from './utilities.service';
-import { INewFinancialTrasactionData, FinancialTransactionModel } from "../models/financial-transaction.model";
-import { IStockBatch, StockDecrementType, IStockQuantityChangeResult } from "../models/stock.model";
+import { INewFinancialTransaction, FinancialTransactionModel } from "../models/financial-transaction.model";
+import { IStockBatch, StockDecrementType, IStockQuantityChangeResult, IStock } from "../models/stock.model";
 import { Error } from "mongoose";
 
 
@@ -86,7 +86,7 @@ const getFirstInventoryTransactionWithIndexGreaterThanOrEqual = async (
 ): Promise<IInventoryTransactionDoc<any> | any> => {
     const inventoryTransaction: IInventoryTransactionDoc<any> | null = await InventoryTransactionModel
         .findOne({
-            inventoryItemId: currentInventoryTransaction.inventoryItemId,
+            inventoryItem: currentInventoryTransaction.inventoryItem,
             inventoryItemTransactionIndex: { $gte: currentInventoryTransaction.inventoryItemTransactionIndex },
             isActive: true
         })
@@ -122,11 +122,11 @@ const createIncrementInventoryTransaction = async (
     if (!inventoryItem) {
         throw new Error(`Skladová položka s ID ${requestData.inventoryItemId} neexistuje`);
     }
-    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnitId, requestData.effectiveDate))) {
+    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnit, requestData.effectiveDate))) {
         throw new Error('Ucetni obdobi s danym datumem nenalezeno');
     }
     const stockDecrementType: StockDecrementType | null = await inventoryGroupService.getInventoryGroupStockDecrementType(
-        inventoryItem.inventoryGroupId
+        inventoryItem.inventoryGroup
     );
     if (!stockDecrementType) {
         throw new Error(`Nenalezena ocenovaci metod pro vyskladneni`);
@@ -134,43 +134,44 @@ const createIncrementInventoryTransaction = async (
     const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
         previousInventoryTransaction.inventoryItemTransactionIndex + 1 :
         1;
-    const currentStock: IStockBatch[] = previousInventoryTransaction ?
+    const currentStock: IStock = previousInventoryTransaction ?
         previousInventoryTransaction.stock :
-        [];
+        { totalStockQuantity: 0, totalStockCost: 0, batches: [] };
     const newStockBatch: IStockBatch = {
         quantity: requestData.specificData.quantity,
         costPerUnit: requestData.specificData.costPerUnit,
         added: new Date(requestData.effectiveDate),
         transactionIndex: inventoryItemTransactionIndex
     };
-    const stock: IStockBatch[] = stockService.getSortedStock([...currentStock, newStockBatch], stockDecrementType);
+    const stock: IStock = stockService.getStockIncrementResult(currentStock, newStockBatch).stock;
     const totalTransactionAmount: number = utilitiesService.getRoundedNumber(
         requestData.specificData.quantity * requestData.specificData.costPerUnit, 2
     );
+    const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
     const newTransactionData: INewInventoryTransaction<IIncrementInventoryTransactionSpecificData> = {
         type: InventoryTransactionType.Increment,
         description: requestData.description,
-        inventoryItemId: inventoryItem.id,
-        financialUnitId: inventoryItem.financialUnitId,
-        debitAccountId: requestData.debitAccountId,
-        creditAccountId: requestData.creditAccountId,
+        inventoryItem: inventoryItem.id,
+        financialUnit: inventoryItem.financialUnit,
+        debitAccount: requestData.debitAccountId,
+        creditAccount: requestData.creditAccountId,
         totalTransactionAmount,
-        effectiveDate: requestData.effectiveDate,
+        effectiveDate,
         inventoryItemTransactionIndex,
         specificData: requestData.specificData,
         stock,
         isDerivedTransaction: !!transactionIdForcingDerivation,
-        transactionIdForcingDerivation,
+        transactionForcingDerivation: transactionIdForcingDerivation,
         isActive: false
     };
     const inventoryTransaction: IInventoryTransactionDoc<IIncrementInventoryTransactionSpecificData> = await insertInventoryTransactionToDb(newTransactionData);
-    const newFinancialTransactionData: INewFinancialTrasactionData = {
-        inventoryTransactionId: inventoryTransaction.id,
-        inventoryItemId: inventoryItem.id,
-        financialUnitId: inventoryItem.financialUnitId,
-        effectiveDate: requestData.effectiveDate,
-        debitAccountId: requestData.debitAccountId,
-        creditAccountId: requestData.creditAccountId,
+    const newFinancialTransactionData: INewFinancialTransaction = {
+        inventoryTransaction: inventoryTransaction.id,
+        inventoryItem: inventoryItem.id,
+        financialUnit: inventoryItem.financialUnit,
+        effectiveDate,
+        debitAccount: requestData.debitAccountId,
+        creditAccount: requestData.creditAccountId,
         amount: totalTransactionAmount,
         inventoryItemTransactionIndex,
         isDerivedTransaction: !!transactionIdForcingDerivation,
@@ -191,11 +192,11 @@ const createDecrementInventoryTransaction = async (
     if (!inventoryItem) {
         throw new Error(`Skladová položka s ID ${requestData.inventoryItemId} neexistuje`);
     }
-    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnitId, requestData.effectiveDate))) {
+    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnit, requestData.effectiveDate))) {
         throw new Error('Ucetni obdobi s danym datumem nenalezeno');
     }
     const stockDecrementType: StockDecrementType | null = await inventoryGroupService.getInventoryGroupStockDecrementType(
-        inventoryItem.inventoryGroupId
+        inventoryItem.inventoryGroup
     );
     if (!stockDecrementType) {
         throw new Error(`Nenalezena ocenovaci metoda`);
@@ -203,36 +204,37 @@ const createDecrementInventoryTransaction = async (
     const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
         previousInventoryTransaction.inventoryItemTransactionIndex + 1 :
         1;
-    const currentStock: IStockBatch[] = previousInventoryTransaction ?
+    const currentStock: IStock = previousInventoryTransaction ?
         previousInventoryTransaction.stock :
-        [];
+        { totalStockQuantity: 0, totalStockCost: 0, batches: [] };
     const stockDecrementResult: IStockQuantityChangeResult = stockService.getStockDecrementResult(
         currentStock, requestData.specificData.quantity, stockDecrementType
     );
+    const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
     const newInventoryTransactionData: INewInventoryTransaction<IDecrementInventoryTransactionSpecificData> = {
         type: InventoryTransactionType.Decrement,
         description: requestData.description,
-        inventoryItemId: inventoryItem.id,
-        financialUnitId: inventoryItem.financialUnitId,
-        debitAccountId: requestData.debitAccountId,
-        creditAccountId: requestData.creditAccountId,
+        inventoryItem: inventoryItem.id,
+        financialUnit: inventoryItem.financialUnit,
+        debitAccount: requestData.debitAccountId,
+        creditAccount: requestData.creditAccountId,
         totalTransactionAmount: stockDecrementResult.changeCost,
-        effectiveDate: requestData.effectiveDate,
+        effectiveDate,
         inventoryItemTransactionIndex,
         specificData: requestData.specificData,
         stock: stockDecrementResult.stock,
         isDerivedTransaction: !!transactionIdForcingDerivation,
-        transactionIdForcingDerivation,
+        transactionForcingDerivation: transactionIdForcingDerivation,
         isActive: false
     };
     const inventoryTransaction: IInventoryTransactionDoc<any> = await insertInventoryTransactionToDb(newInventoryTransactionData);
-    const newFinancialTransactionData: INewFinancialTrasactionData = {
-        inventoryTransactionId: inventoryTransaction.id,
-        inventoryItemId: inventoryItem.id,
-        financialUnitId: inventoryItem.financialUnitId,
-        debitAccountId: requestData.debitAccountId,
-        creditAccountId: requestData.creditAccountId,
-        effectiveDate: requestData.effectiveDate,
+    const newFinancialTransactionData: INewFinancialTransaction = {
+        inventoryTransaction: inventoryTransaction.id,
+        inventoryItem: inventoryItem.id,
+        financialUnit: inventoryItem.financialUnit,
+        debitAccount: requestData.debitAccountId,
+        creditAccount: requestData.creditAccountId,
+        effectiveDate: effectiveDate,
         amount: stockDecrementResult.changeCost,
         inventoryItemTransactionIndex,
         isDerivedTransaction: !!transactionIdForcingDerivation,
@@ -276,8 +278,8 @@ const activateCreatedInventoryTransactions = async (
     await Promise.all([
         InventoryTransactionModel.findByIdAndUpdate(newInventoryTransactionId, { isActive: true }).exec(),
         InventoryTransactionModel.updateMany(
-            {transactionIdForcingDerivation: newInventoryTransactionId },
-            { isActive: 1 }
+            { transactionForcingDerivation: newInventoryTransactionId },
+            { isActive: true }
         ).exec(),
         financialTransactionService.activateCreatedFinancialTransactions(newInventoryTransactionId)
     ]);
@@ -287,17 +289,17 @@ const activateCreatedInventoryTransactions = async (
 
 
 const deleteActiveInventoryTransactionsWithIndexEqualOrLarger = async (
-    inventoryItemId: string,
+    inventoryItem: string,
     inventoryItemTransactionIndex: number
 ): Promise<'OK'> => {
     await Promise.all([
         InventoryTransactionModel.deleteMany({
-            inventoryItemId,
+            inventoryItem,
             inventoryItemTransactionIndex: { $gte: inventoryItemTransactionIndex },
             isActive: true
         }).exec(),
         financialTransactionService.deleteActiveFinancialTransactionsWithIndexEqualOrLarger(
-            inventoryItemId, inventoryItemTransactionIndex
+            inventoryItem, inventoryItemTransactionIndex
         )
     ]);
     return 'OK';
@@ -310,7 +312,7 @@ const deleteInactiveInventoryTransaction = async (
 ): Promise<'OK'> => {
     await Promise.all([
         InventoryTransactionModel.deleteMany({
-            transactionIdForcingDerivation: inventoryTransactionId,
+            transactionForcingDerivation: inventoryTransactionId,
             isActive: false
         }).exec(),
         InventoryTransactionModel.findByIdAndDelete(inventoryTransactionId).where({
@@ -340,11 +342,11 @@ const deriveSubsequentInventoryTransactions = async (
         return 'OK';
     }
     const requestData: INewInventoryTransactionRequestData<any> = {
-        inventoryItemId: subsequentInventoryTransaction.inventoryItemId,
+        inventoryItemId: subsequentInventoryTransaction.inventoryItem,
         description: subsequentInventoryTransaction.description,
         effectiveDate: subsequentInventoryTransaction.effectiveDate,
-        debitAccountId: subsequentInventoryTransaction.debitAccountId,
-        creditAccountId: subsequentInventoryTransaction.creditAccountId,
+        debitAccountId: subsequentInventoryTransaction.debitAccount,
+        creditAccountId: subsequentInventoryTransaction.creditAccount,
         specificData: subsequentInventoryTransaction.specificData
     };
     const derivedSubsequentInventoryTransaction: IInventoryTransactionDoc<any> = await createInactiveInventoryTransaction(
@@ -387,7 +389,7 @@ export const createInventoryTransaction = async (
         throw new Error('Chyba pri odstranovani puvodnich naslednych transakci');
     });
     await deleteActiveInventoryTransactionsWithIndexEqualOrLarger(
-        newInventoryTransaction.inventoryItemId,
+        newInventoryTransaction.inventoryItem,
         newInventoryTransaction.inventoryItemTransactionIndex
     );
     await activateCreatedInventoryTransactions(newInventoryTransaction.id);
@@ -398,6 +400,19 @@ export const createInventoryTransaction = async (
 export const getAllInventoryTransactions = async (financialUnitId: string): Promise<IInventoryTransactionDoc<any>[]> => {
     const inventoryTransactions: IInventoryTransactionDoc<any>[] = await InventoryTransactionModel.find({ financialUnitId }).exec()
         .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání skladových transakcí');
+        });
+    return inventoryTransactions;
+}
+
+
+
+export const getPopulatedInventoryTransactions = async (financialUnit: string): Promise<IInventoryTransactionDoc<any>[]> => {
+    const inventoryTransactions: IInventoryTransactionDoc<any>[] = await InventoryTransactionModel
+        .find({ financialUnit })
+        .populate('inventoryItem')
+        .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání skladových transakcí');
         });

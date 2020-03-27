@@ -1,10 +1,15 @@
-import { FinancialPeriodModel, IFinancialPeriodDoc, INewFinancialPeriodData, INewFinancialPeriodRequestData } from '../models/financial-period.model';
+import { FinancialPeriodModel, IFinancialPeriodDoc, INewFinancialPeriod, INewFinancialPeriodRequestData } from '../models/financial-period.model';
 import * as financialUnitService from './financial-unit.service';  
+import * as utilitiesService from './utilities.service';
 
 
 
 export const getIsFinancialPeriodExistsWithDate = async (financialUnitId: string, date: Date) => {
-    return await FinancialPeriodModel.exists({ financialUnitId, startDate: { $lte: date}, endDate: { $gte: date } });
+    return await FinancialPeriodModel.exists({ 
+        financialUnit: financialUnitId,
+        startDate: { $lte: date},
+        endDate: { $gte: date }
+    });
 }
 
 
@@ -22,7 +27,7 @@ export const getAllFinancialPeriods = async (financialUnitId: string): Promise<I
 
 export const getFirstFinancialPeriod = async (financialUnitId: string): Promise<IFinancialPeriodDoc | null> => {
     const firstFinancialPeriod: IFinancialPeriodDoc | null = await FinancialPeriodModel
-        .findOne({ financialUnitId })
+        .findOne({ financialUnit: financialUnitId })
         .sort({ periodIndex: 1 })
         .exec().catch((err) => {
             console.error(err);
@@ -51,18 +56,19 @@ export const createFinancialPeriod = async (requestData: INewFinancialPeriodRequ
         throw new Error('Ucetni jednotka s danym ID neexistuje');
     }
     const lastFinancialPeriod: IFinancialPeriodDoc | null = await getLastFinancialPeriod(requestData.financialUnitId);
-    const startDate: Date = lastFinancialPeriod ? new Date(lastFinancialPeriod.endDate) : requestData.startDate;
+    const startDate: Date = lastFinancialPeriod ? new Date(lastFinancialPeriod.endDate) : utilitiesService.getUTCDate(requestData.startDate);
     if (lastFinancialPeriod) {
         startDate.setDate(startDate.getDate() + 1);
     }
-    if (requestData.endDate < startDate) {
+    const endDate: Date = utilitiesService.getUTCDate(requestData.endDate);
+    if (startDate > endDate) {
         throw new Error('Konec ucetniho obdobi nesmi predchazet jeho pocatek');
     }
-    const data: INewFinancialPeriodData = {
-        financialUnitId: requestData.financialUnitId,
+    const data: INewFinancialPeriod = {
+        financialUnit: requestData.financialUnitId,
         periodIndex: lastFinancialPeriod ? lastFinancialPeriod.periodIndex + 1 : 1,
         startDate,
-        endDate: requestData.endDate,
+        endDate,
     };
     const financialPeriod: IFinancialPeriodDoc = await new FinancialPeriodModel(data).save()
         .catch((err) => {

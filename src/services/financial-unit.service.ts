@@ -1,4 +1,4 @@
-import { FinancialUnitModel, IFinancialUnitDoc, INewFinancialUnitData } from '../models/financial-unit.model';
+import { FinancialUnitModel, IFinancialUnitDoc, INewFinancialUnit } from '../models/financial-unit.model';
 import * as financialAccountService from './financial-account.service';
 import * as financialTransactionService from './financial-transaction.service';
 import * as inventoryGroupService  from './inventory-group.service';
@@ -29,7 +29,7 @@ const generateDefaultDataInFinancialUnit = async (financialUnitId: string): Prom
 
 
 
-export const createFinancialUnit = async (data: INewFinancialUnitData): Promise<IFinancialUnitDoc> => {
+export const createFinancialUnit = async (data: INewFinancialUnit): Promise<IFinancialUnitDoc> => {
     const financialUnit: IFinancialUnitDoc = await new FinancialUnitModel(data).save()
         .catch((err) => {
             console.error(err);

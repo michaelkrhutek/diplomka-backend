@@ -1,4 +1,4 @@
-import { StockDecrementType, IStockBatch, IStockQuantityChangeResult } from "../models/stock.model";
+import { StockDecrementType, IStock, IStockBatch, IStockQuantityChangeResult } from "../models/stock.model";
 import * as utilitiesService from './utilities.service';
 
 
@@ -18,22 +18,37 @@ export const parseStockDecrementType = (typeAsString: string): StockDecrementTyp
 
 
 
-export const getSortedStock = (stock: IStockBatch[], stockDecrementType: StockDecrementType): IStockBatch[] => {
-    if (stock.length == 0) {
-        return [];
+export const getSortedStock = (stock: IStock, stockDecrementType: StockDecrementType): IStock => {
+    if (stock.batches.length < 2) {
+        return stock;
     } else if (stockDecrementType == StockDecrementType.FIFO) {
-        return stock.sort((a, b) => a.transactionIndex - b.transactionIndex);
+        const sortedBatches: IStockBatch[] = stock.batches.sort((a, b) => a.transactionIndex - b.transactionIndex);
+        const sortedStock: IStock = {
+            totalStockQuantity: stock.totalStockQuantity,
+            totalStockCost: stock.totalStockCost,
+            batches: sortedBatches
+        }
+        return sortedStock;
     } else if (stockDecrementType == StockDecrementType.LIFO) {
-        return stock.sort((a, b) => b.transactionIndex - a.transactionIndex);
+        const sortedBatches: IStockBatch[] = stock.batches.sort((a, b) => b.transactionIndex - a.transactionIndex);
+        const sortedStock: IStock = {
+            totalStockQuantity: stock.totalStockQuantity,
+            totalStockCost: stock.totalStockCost,
+            batches: sortedBatches
+        }
+        return sortedStock;
     } else if (stockDecrementType == StockDecrementType.Average) {
-        const totalStockQuantity: number = stock
-            .map(batch => batch.quantity)
-            .reduce((acc, val) => acc + val, 0);
-        const totalStockCost: number = stock
-            .map(batch => batch.quantity * batch.costPerUnit)
-            .reduce((acc, val) => acc + val, 0);
-        const costPerUnit: number = totalStockQuantity ? totalStockCost / totalStockQuantity : 0;
-        return [{ quantity: totalStockQuantity, costPerUnit, added: new Date(), transactionIndex: 0 }];
+        const sortedStock: IStock = {
+            totalStockQuantity: stock.totalStockQuantity,
+            totalStockCost: stock.totalStockCost,
+            batches: [{
+                quantity: stock.totalStockQuantity,
+                costPerUnit: stock.totalStockCost / stock.totalStockQuantity,
+                added: new Date(),
+                transactionIndex: 0
+            }]
+        };
+        return sortedStock;
     } else {
         throw new Error('Neznámá oceňovací metoda pro vyskladnění');
     }
@@ -42,20 +57,20 @@ export const getSortedStock = (stock: IStockBatch[], stockDecrementType: StockDe
 
 
 export const getStockDecrementResult = (
-    unorderedCurrentStock: IStockBatch[],
+    currentStock: IStock,
     quantityToRemove: number,
     stockDecrementType: StockDecrementType
 ): IStockQuantityChangeResult => {
-    const currentStockQuantity: number = unorderedCurrentStock
+    const currentStockQuantity: number = currentStock.batches
         .map((stockBatch) => stockBatch.quantity)
         .reduce((acc, val) => acc + val, 0);
     if (currentStockQuantity < quantityToRemove) {
         throw new Error('Nedostačné množství pro vyskladnění');
     }
-    const currentStock: IStockBatch[] = getSortedStock(unorderedCurrentStock, stockDecrementType);
+    const sortedStock: IStock = getSortedStock(currentStock, stockDecrementType);
     let quantityToRemoveLeft: number = quantityToRemove;
     let changeCost: number = 0;
-    const unfiltredStock: IStockBatch[] = currentStock.map((batch): IStockBatch => {
+    const unfiltredBatches: IStockBatch[] = sortedStock.batches.map((batch): IStockBatch => {
         if (quantityToRemoveLeft == 0) {
             const { quantity, costPerUnit, added } = batch;
             return {
@@ -85,6 +100,32 @@ export const getStockDecrementResult = (
             };
         }
     })
-    const stock: IStockBatch[] = unfiltredStock.filter((batch) => batch.quantity > 0);
-    return { stock, changeCost: utilitiesService.getRoundedNumber(changeCost, 2) };
+    const batches: IStockBatch[] = unfiltredBatches.filter(batch => batch.quantity > 0)
+    const stock: IStock = {
+        totalStockQuantity: batches.map(batch => batch.quantity).reduce((acc, val) => acc + val, 0),
+        totalStockCost: batches.map(batch => batch.costPerUnit * batch.quantity).reduce((acc, val) => acc + val, 0),
+        batches
+    };
+    return {
+        stock,
+        changeCost: utilitiesService.getRoundedNumber(changeCost, 2)
+    };
 }
+
+
+
+export const getStockIncrementResult = (
+    currentStock: IStock,
+    newStockBatch: IStockBatch
+): IStockQuantityChangeResult => {
+    const batches: IStockBatch[] = [...currentStock.batches, newStockBatch];
+    const stock: IStock = {
+        totalStockQuantity: batches.map(batch => batch.quantity).reduce((acc, val) => acc + val, 0),
+        totalStockCost: batches.map(batch => batch.costPerUnit * batch.quantity).reduce((acc, val) => acc + val, 0),
+        batches
+    };
+    return {
+        stock,
+        changeCost: utilitiesService.getRoundedNumber(newStockBatch.quantity * newStockBatch.costPerUnit, 2)
+    };
+} 

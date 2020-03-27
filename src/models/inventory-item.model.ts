@@ -1,27 +1,39 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
+import { IInventoryGroupDoc } from './inventory-group.model';
+import { IFinancialUnitDoc } from './financial-unit.model';
 
-export interface INewInventoryItemData {
+interface IInventoryItemBase {
     name: string;
-    financialUnitId: string;
-    inventoryGroupId: string;
 }
 
-export interface IInventoryItem extends INewInventoryItemData, IPlainMongooseDoc {};
-export interface IInventoryItemDoc extends INewInventoryItemData, Document {};
+interface IReferences {
+    financialUnit: IFinancialUnitDoc['_id'];
+    inventoryGroup: IInventoryGroupDoc['_id'];
+}
+
+interface IPopulatedReferences {
+    financialUnit: IFinancialUnitDoc['_id'];
+    inventoryGroup: IInventoryGroupDoc;
+}
+
+export interface INewInventoryItem extends IInventoryItemBase, IReferences {}
+export interface IInventoryItem extends IInventoryItemBase, IReferences, IPlainMongooseDoc {}
+export interface IInventoryItemDoc extends IInventoryItemBase, IReferences, Document {}
+export interface IInventoryItemPopulatedDoc extends IInventoryItemBase, IPopulatedReferences, Document {}
 
 const InventoryItemSchema = new Schema<IInventoryItem>({
     name: {
         type: String,
         required: true
     },
-    financialUnitId: {
+    financialUnit: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialUnit',
         required: true
     },
-    inventoryGroupId: {
+    inventoryGroup: {
         type: Schema.Types.ObjectId,
         ref: 'InventoryGroup',
         required: true

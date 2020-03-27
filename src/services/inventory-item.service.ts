@@ -1,19 +1,19 @@
-import { InventoryItemModel, IInventoryItemDoc, INewInventoryItemData } from '../models/inventory-item.model';
+import { InventoryItemModel, IInventoryItemDoc, INewInventoryItem, IInventoryItemPopulatedDoc } from '../models/inventory-item.model';
 import * as financialUnitService from './financial-unit.service';  
 import * as inventoryGroupService from './inventory-group.service';
 
 
 export const getIsInventoryItemExist = async (inventoryItemId: string, financialUnitId: string): Promise<boolean> => {
-    return await InventoryItemModel.exists({ _id: inventoryItemId, financialUnitId });
+    return await InventoryItemModel.exists({ _id: inventoryItemId, financialUnit: financialUnitId });
 }
 
 
 
-export const createInventoryItem = async (data: INewInventoryItemData): Promise<IInventoryItemDoc> => {
-    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnitId))) {
+export const createInventoryItem = async (data: INewInventoryItem): Promise<IInventoryItemDoc> => {
+    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnit))) {
         throw new Error('Ucetni jednotka s danym ID nenalezena');
     }
-    if (!(await inventoryGroupService.getIsInventoryGroupExist(data.inventoryGroupId, data.financialUnitId))) {
+    if (!(await inventoryGroupService.getIsInventoryGroupExist(data.inventoryGroup, data.financialUnit))) {
         throw new Error('Skupina zasob s danym ID v dane ucetni jednotce nenalezena');
     }
     const inventoryItem: IInventoryItemDoc = await new InventoryItemModel(data).save()
@@ -26,9 +26,12 @@ export const createInventoryItem = async (data: INewInventoryItemData): Promise<
 
 
 
-export const getAllInventoryItems = async (financialUnitId: string): Promise<IInventoryItemDoc[]> => {
-    const inventoryItems: IInventoryItemDoc[] = await InventoryItemModel.find({ financialUnitId }).exec()
-        .catch((err) => {
+export const getInventoryItemsWithPopulatedRefs = async (financialUnitId: string): Promise<IInventoryItemPopulatedDoc[]> => {
+    const inventoryItems: IInventoryItemPopulatedDoc[] = await InventoryItemModel
+        .find({ financialUnit: financialUnitId })
+        .populate('inventoryGroup')
+        .sort({ effectiveDate: -1 })
+        .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání skladových položek');
         });

@@ -1,18 +1,18 @@
-import { FinancialTransactionModel, INewFinancialTrasactionData, IFinancialTransactionDoc } from '../models/financial-transaction.model';
+import { FinancialTransactionModel, INewFinancialTransaction, IFinancialTransactionDoc } from '../models/financial-transaction.model';
 import { Error } from 'mongoose';
 import * as financialPeriodService from './financial-period.service';
 import * as financialAccountService from './financial-account.service';
 
 
 
-export const createInactiveFinancialTransaction = async (data: INewFinancialTrasactionData): Promise<IFinancialTransactionDoc> => {
-    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(data.financialUnitId, data.effectiveDate))) {
+export const createInactiveFinancialTransaction = async (data: INewFinancialTransaction): Promise<IFinancialTransactionDoc> => {
+    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(data.financialUnit, data.effectiveDate))) {
         throw new Error('Ucetni obdobi s danym datem nenalezeno');   
     }
-    if (!(await financialAccountService.getIsFinancialAccountExist(data.debitAccountId, data.financialUnitId))) {
+    if (!(await financialAccountService.getIsFinancialAccountExist(data.debitAccount, data.financialUnit))) {
         throw new Error('Financni ucet s danym ID nenalezen');   
     }
-    if (!(await financialAccountService.getIsFinancialAccountExist(data.creditAccountId, data.financialUnitId))) {
+    if (!(await financialAccountService.getIsFinancialAccountExist(data.creditAccount, data.financialUnit))) {
         throw new Error('Financni ucet s danym ID nenalezen');   
     }
     data.isActive = false;
@@ -31,11 +31,11 @@ export const activateCreatedFinancialTransactions = async (
 ): Promise<'OK'> => {
     await Promise.all([
         FinancialTransactionModel.updateMany(
-            { inventoryTransactionId },
+            { inventoryTransaction: inventoryTransactionId },
             { isActive: true }
         ).exec(),
         FinancialTransactionModel.updateMany(
-            { inventoryTransactionIdForcingDerivation: inventoryTransactionId },
+            { inventoryTransactionForcingDerivation: inventoryTransactionId },
             { isActive: true }
         ).exec()
     ]);
@@ -49,7 +49,7 @@ export const deleteActiveFinancialTransactionsWithIndexEqualOrLarger = async (
     inventoryItemTransactionIndex: number
 ): Promise<'OK'> => {
     await FinancialTransactionModel.deleteMany({
-        inventoryItemId,
+        inventoryItem: inventoryItemId,
         inventoryItemTransactionIndex: { $gte: inventoryItemTransactionIndex },
         isActive: true
     }).exec();
@@ -63,11 +63,11 @@ export const deleteInactiveFinancialTransaction = async (
 ) : Promise<'OK'> => {
     await Promise.all([
         FinancialTransactionModel.deleteMany({
-            inventoryTransactionIdForcingDerivation: inventoryTransactionId,
+            inventoryTransactionForcingDerivation: inventoryTransactionId,
             isActive: false
         }).exec(),
         FinancialTransactionModel.deleteMany({
-            inventoryTransactionId: inventoryTransactionId,
+            inventoryTransaction: inventoryTransactionId,
             isActive: false
         }).exec()
     ]);

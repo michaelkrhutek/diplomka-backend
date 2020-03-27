@@ -1,7 +1,11 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
-import { IStockBatch } from './stock.model';
+import { IStock } from './stock.model';
+import { IInventoryItemDoc } from './inventory-item.model';
+import { IFinancialUnitDoc } from './financial-unit.model';
+import { IFinancialAccount } from './financial-account.model';
+import { IFinancialTransactionDoc } from './financial-transaction.model';
 
 export enum InventoryTransactionType {
     Increment = 'increment',
@@ -27,37 +31,50 @@ export interface INewInventoryTransactionRequestData<SpecificData> {
     specificData: SpecificData;
 }
 
-export interface INewInventoryTransaction<SpecificData> {
+interface IInventoryTransactionBase<SpecificData> {
     type: InventoryTransactionType;
-    inventoryItemId: string;
     description: string;
     effectiveDate: Date;
-    debitAccountId: string;
-    creditAccountId: string;
     specificData: SpecificData;
     totalTransactionAmount: number;
-    stock: IStockBatch[];
-    financialUnitId: string;
+    stock: IStock;
     inventoryItemTransactionIndex: number;
     isDerivedTransaction: boolean;
-    transactionIdForcingDerivation: string | null;
-    isActive?: boolean;
+    isActive: boolean;
 }
 
-export interface IInventoryTransaction<SpecificData> extends INewInventoryTransaction<SpecificData>, IPlainMongooseDoc {}
-export interface IInventoryTransactionDoc<SpecificData> extends INewInventoryTransaction<SpecificData>, Document {}
+interface IReferences {
+    financialUnit: IFinancialUnitDoc['_id'];
+    inventoryItem: IInventoryItemDoc['_id'];
+    debitAccount: IFinancialAccount['_id'];
+    creditAccount: IFinancialAccount['_id'];
+    transactionForcingDerivation: IInventoryTransactionDoc<any>['_id'] | null;
+}
+
+interface IPopulatedReferences {
+    financialUnit: IFinancialUnitDoc;
+    inventoryItem: IInventoryItemDoc['_id'];
+    debitAccount: IFinancialAccount;
+    creditAccount: IFinancialAccount;
+    transactionForcingDerivation: IInventoryTransactionDoc<any>['_id'] | null;
+}
+
+export interface INewInventoryTransaction<SpecificData> extends IInventoryTransactionBase<SpecificData>, IReferences {}
+export interface IInventoryTransaction<SpecificData> extends IInventoryTransactionBase<SpecificData>, IReferences, IPlainMongooseDoc {}
+export interface IInventoryTransactionDoc<SpecificData> extends IInventoryTransactionBase<SpecificData>, IReferences, Document {}
+export interface IInventoryTransactionPopulatedDoc<SpecificData> extends IInventoryTransactionBase<SpecificData>, IPopulatedReferences, Document {}
 
 const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
     type: {
         type: String,
         required: true
     },
-    inventoryItemId: {
+    inventoryItem: {
         type: Schema.Types.ObjectId,
         ref: 'InventoryItem',
         required: true
     },
-    financialUnitId: {
+    financialUnit: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialUnit',
         required: true
@@ -74,14 +91,18 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         type: Number,
         required: true
     },
-    debitAccountId: {
+    debitAccount: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialAccount',
         required: true
     },
-    creditAccountId: {
+    creditAccount: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialAccount',
+        required: true
+    },
+    specificData: {
+        type: Object,
         required: true
     },
     totalTransactionAmount: {
@@ -89,25 +110,32 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         required: true
     },
     stock: {
-        type: [{ quantity: Number, costPerUnit: Number, added: Date, transactionIndex: Number }],
-        required: true
-    },
-    specificData: {
-        type: Object,
+        type: {
+            totalStockQuantity: Number,
+            totalStockCost: Number,
+            batches: [
+                {
+                    quantity: Number,
+                    costPerUnit: Number,
+                    added: Date,
+                    transactionIndex: Number
+                }
+            ]
+        },
         required: true
     },
     isDerivedTransaction: {
         type: Boolean,
         required: true,        
     },
-    transactionIdForcingDerivation: {
+    transactionForcingDerivation: {
         type: Schema.Types.ObjectId,
         ref: 'InventoryTransaction',
         default: null
     },
     isActive: {
         type: Boolean,
-        default: false,
+        required: true
     },
 });
 

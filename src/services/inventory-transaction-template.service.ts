@@ -1,7 +1,7 @@
 import {
     IInventoryTransactionTemplateDoc,
     InventoryTransactionTemplateModel,
-    INewInventoryTransactionTemplateData,
+    INewInventoryTransactionTemplate,
 } from "../models/inventory-transaction-template.model";
 import { IDefaultInventoryTransactionTemplateData } from "../default-data";
 import { IFinancialAccountDoc } from "../models/financial-account.model";
@@ -14,16 +14,16 @@ export const createDefaultInventoryTransactionTemplates = async (
     inventoryGroupId: string,
     financialAccounts: IFinancialAccountDoc[],
 ): Promise<IInventoryTransactionTemplateDoc[]> => {
-    const data: INewInventoryTransactionTemplateData[] = rawData.map(temp => {
+    const data: INewInventoryTransactionTemplate[] = rawData.map(temp => {
         const debitAccountId: string = (financialAccounts.find(acc => acc.code == temp.debitAccountCode) as IFinancialAccountDoc)._id.toString();
         const creditAccountId: string = (financialAccounts.find(acc => acc.code == temp.creditAccountCode) as IFinancialAccountDoc)._id.toString();
-        const newTemplateData: INewInventoryTransactionTemplateData = {
+        const newTemplateData: INewInventoryTransactionTemplate = {
             description: temp.description,
             transactionType: temp.transactionType,
-            financialUnitId,
-            inventoryGroupId,
-            debitAccountId,
-            creditAccountId,
+            financialUnit: financialUnitId,
+            inventoryGroup: inventoryGroupId,
+            debitAccount: debitAccountId,
+            creditAccount: creditAccountId,
 
         };
         return newTemplateData;

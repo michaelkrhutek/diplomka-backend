@@ -2,12 +2,18 @@ import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 
-export interface INewFinancialUnitData {
+interface IFinancialUnitBase {
     name: string;
 }
 
-export interface IFinancialUnit extends INewFinancialUnitData, IPlainMongooseDoc {};
-export interface IFinancialUnitDoc extends INewFinancialUnitData, Document {};
+interface IReferences {}
+
+interface IPopulatedReferences {}
+
+export interface INewFinancialUnit extends IFinancialUnitBase, IReferences {}
+export interface IFinancialUnit extends IFinancialUnitBase, IReferences, IPlainMongooseDoc {}
+export interface IFinancialUnitDoc extends IFinancialUnitBase, IReferences, Document {}
+export interface IFinancialUnitPopulatedDoc extends IFinancialUnitBase, IPopulatedReferences, Document {}
 
 const FinancialUnitSchema = new Schema<IFinancialUnit>({
     name: {

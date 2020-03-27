@@ -4,6 +4,12 @@ export enum StockDecrementType {
     Average = 'average'
 }
 
+export interface IStock {
+    totalStockQuantity: number;
+    totalStockCost: number;
+    batches: IStockBatch[];
+}
+
 export interface IStockBatch {
     quantity: number;
     costPerUnit: number;
@@ -12,6 +18,6 @@ export interface IStockBatch {
 }
 
 export interface IStockQuantityChangeResult {
-    stock: IStockBatch[];
+    stock: IStock;
     changeCost: number;
 }

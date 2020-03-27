@@ -1,21 +1,20 @@
-import { InventoryGroupModel, IInventoryGroupDoc, INewInventoryGroupData } from "../models/inventory-group.model";
+import { InventoryGroupModel, IInventoryGroupDoc, INewInventoryGroup } from "../models/inventory-group.model";
 import { StockDecrementType } from '../models/stock.model';
 import * as financialUnitService from './financial-unit.service'; 
 import * as inventoryTransactionTemplateService from './inventory-transaction-template.service'; 
 import { IDefaultInventoryGroupData } from "../default-data";
 import { IFinancialAccountDoc } from "../models/financial-account.model";
-import { Schema } from "mongoose";
 
 
 
 export const getIsInventoryGroupExist = async (inventoryGroupId: string, financialUnitId: string): Promise<boolean> => {
-    return await InventoryGroupModel.exists({ _id: inventoryGroupId, financialUnitId });
+    return await InventoryGroupModel.exists({ _id: inventoryGroupId, financialUnit: financialUnitId });
 }
 
 
 
 export const getAllInventoryGroups = async (financialUnitId: string): Promise<IInventoryGroupDoc[]> => {
-    const inventoryGroups: IInventoryGroupDoc[] = await InventoryGroupModel.find({ financialUnitId }).exec()
+    const inventoryGroups: IInventoryGroupDoc[] = await InventoryGroupModel.find({ financialUnit: financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání skladových položek');
@@ -42,9 +41,9 @@ export const createDefaultInventoryGroups = async (
     financialAccounts: IFinancialAccountDoc[]
 ): Promise<IInventoryGroupDoc[]> => {
     const inventoryGroupsPromises: Promise<IInventoryGroupDoc>[] = rawData.map(async (group) => {
-        const newGroupData: INewInventoryGroupData = {
+        const newGroupData: INewInventoryGroup = {
             name: group.name,
-            financialUnitId,
+            financialUnit: financialUnitId,
             defaultStockDecrementType: group.defaultStockDecrementType
         };
         const inventoryGroup: IInventoryGroupDoc = await new InventoryGroupModel(newGroupData).save();
@@ -62,8 +61,8 @@ export const createDefaultInventoryGroups = async (
 
 
 
-export const createInventoryGroup = async (data: INewInventoryGroupData): Promise<IInventoryGroupDoc> => {
-    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnitId))) {
+export const createInventoryGroup = async (data: INewInventoryGroup): Promise<IInventoryGroupDoc> => {
+    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnit))) {
         throw new Error('Ucetni jednotka s danym ID neexistuje');
     }
     const inventoryGroup: IInventoryGroupDoc = await new InventoryGroupModel(data).save()
@@ -90,7 +89,6 @@ export const deleteAllInventoryGroups = async (financialUnitId: string): Promise
 export const getInventoryGroupStockDecrementType = async (inventoryGroupId: string): Promise<StockDecrementType | null> => {
     const inventoryGroup: IInventoryGroupDoc | null  = await InventoryGroupModel
         .findById(inventoryGroupId)
-        .select({ defaultStockDecrementType: 1 })
-        .lean();
+        .select({ defaultStockDecrementType: 1 });
     return inventoryGroup ? inventoryGroup.defaultStockDecrementType : null;
 } 

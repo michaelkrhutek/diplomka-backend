@@ -1,5 +1,6 @@
 import express, { NextFunction } from 'express';
 import { Request, Response } from 'express';
+import cors from 'cors';
 import bodyParser from 'body-parser';
 
 import financialUnitRouter from './routes/financial-unit.route';
@@ -13,6 +14,7 @@ import inventoryTransactionRouter from './routes/inventory-transaction.route';
 const app = express();
 const port = 3000;
 
+app.use(cors({ origin: '*' }));
 app.use(bodyParser.json());
 
 app.use((req: Request, _res: Response, next: NextFunction) => {

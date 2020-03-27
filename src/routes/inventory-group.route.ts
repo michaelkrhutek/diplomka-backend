@@ -23,7 +23,7 @@ router.post('/create-inventory-group', (req: Request, res: Response) => {
     if (!defaultStockDecrementType) {
         throw new Error('Neznama ocenovaci metoda pro vyskladneni');
     }
-    createInventoryGroup({ name, financialUnitId, defaultStockDecrementType }).then((inventoryGroup) => {
+    createInventoryGroup({ name, financialUnit: financialUnitId, defaultStockDecrementType }).then((inventoryGroup) => {
         res.send(inventoryGroup);
     }).catch((err) => {
         console.error(err);

@@ -50,9 +50,11 @@ export const getTrialBalance = async (
     startDate: Date,
     endDate: Date
 ): Promise<ITrialBalance> => {
+    const startDateUTC: Date = utilitiesService.getUTCDate(startDate);
+    const endDateUTC: Date = utilitiesService.getUTCDate(endDate);
     const accountsTurnovers: IAccountTurnover[] = await Promise.all([
-        getAccountsTurnovers(financialUnitId, 'debit', startDate, endDate),
-        getAccountsTurnovers(financialUnitId, 'credit', startDate, endDate)
+        getAccountsTurnovers(financialUnitId, 'debit', startDateUTC, endDateUTC),
+        getAccountsTurnovers(financialUnitId, 'credit', startDateUTC, endDateUTC)
     ]).then(([debitTurnovers, creditTurnovers]) => {
         return [...debitTurnovers, ...creditTurnovers];
     }).catch((err) => {

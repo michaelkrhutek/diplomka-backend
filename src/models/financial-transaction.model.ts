@@ -1,36 +1,51 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
+import { IInventoryItemDoc } from './inventory-item.model';
+import { IFinancialAccountDoc } from './financial-account.model';
+import { IFinancialUnitDoc } from './financial-unit.model';
 
-export interface INewFinancialTrasactionData {
-    inventoryItemId: string;
-    financialUnitId: string;
-    debitAccountId: string;
-    creditAccountId: string;
+interface IFinancialTransactionBase {
     effectiveDate: Date;
     amount: number;
-    inventoryTransactionId: string;
+    inventoryTransaction: string;
     inventoryItemTransactionIndex: number;
     isDerivedTransaction: boolean;
     inventoryTransactionIdForcingDerivation: string | null;
     isActive?: boolean;
 }
 
-export interface IFinancialTransaction extends INewFinancialTrasactionData, IPlainMongooseDoc {};
-export interface IFinancialTransactionDoc extends INewFinancialTrasactionData, Document {};
+interface IReferences {
+    financialUnit: IFinancialUnitDoc['_id'];
+    inventoryItem: IInventoryItemDoc['_id'];
+    debitAccount: IFinancialAccountDoc['_id'];
+    creditAccount: IFinancialAccountDoc['_id'];
+}
+
+interface IPopulatedReferences {
+    financialUnit: IFinancialUnitDoc['_id'];
+    inventroryItem: IInventoryItemDoc,
+    debitAccount: IFinancialAccountDoc;
+    creditAccount: IFinancialAccountDoc;
+}
+
+export interface INewFinancialTransaction extends IFinancialTransactionBase, IReferences {}
+export interface IFinancialTransaction extends IFinancialTransactionBase, IReferences, IPlainMongooseDoc {}
+export interface IFinancialTransactionDoc extends IFinancialTransactionBase, IReferences, Document {}
+export interface IFinancialTransactionPopulatedDoc extends IFinancialTransactionBase, IPopulatedReferences, Document {}
 
 const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
-    financialUnitId: {
+    financialUnit: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialUnit',
         required: true
     },
-    inventoryItemId: {
+    inventoryItem: {
         type: Schema.Types.ObjectId,
         ref: 'InventoryItem',
         required: true
     },
-    inventoryTransactionId: {
+    inventoryTransaction: {
         type: Schema.Types.ObjectId,
         ref: 'InventoryTransaction',
         required: true
@@ -39,12 +54,12 @@ const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
         type: Number,
         required: true
     },
-    debitAccountId: {
+    debitAccount: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialAccount',
         required: true
     },
-    creditAccountId: {
+    creditAccount: {
         type: Schema.Types.ObjectId,
         ref: 'FinancialAccount',
         required: true

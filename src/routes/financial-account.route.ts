@@ -17,7 +17,7 @@ router.post('/create-financial-account', (req: Request, res: Response) => {
     const name: string = req.query.name;
     const code: string = req.query.code;
     const financialUnitId: string = req.query.financialUnitId;
-    createFinancialAccount({ name, code, financialUnitId }).then((financialAccount) => {
+    createFinancialAccount({ name, code, financialUnit: financialUnitId }).then((financialAccount) => {
         res.send(financialAccount);
     }).catch((err) => {
         console.error(err);
