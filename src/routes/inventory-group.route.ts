@@ -17,18 +17,20 @@ router.get('/get-all-inventory-groups', (req: Request, res: Response) => {
 });
 
 router.post('/create-inventory-group', (req: Request, res: Response) => {
-    const name: string = req.query.name;
-    const financialUnitId: string = req.query.financialUnitId;
-    const defaultStockDecrementType: StockDecrementType | null = parseStockDecrementType(req.query.defaultStockDecrementType);
-    if (!defaultStockDecrementType) {
-        throw new Error('Neznama ocenovaci metoda pro vyskladneni');
-    }
-    createInventoryGroup({ name, financialUnit: financialUnitId, defaultStockDecrementType }).then((inventoryGroup) => {
-        res.send(inventoryGroup);
-    }).catch((err) => {
+    try {
+        const name: string = req.query.name;
+        const financialUnitId: string = req.query.financialUnitId;
+        const defaultStockDecrementType: StockDecrementType | null = parseStockDecrementType(req.query.defaultStockDecrementType);
+        if (!defaultStockDecrementType) {
+            throw new Error('Neznama ocenovaci metoda pro vyskladneni');
+        }
+        createInventoryGroup({ name, financialUnit: financialUnitId, defaultStockDecrementType }).then((inventoryGroup) => {
+            res.send(inventoryGroup);
+        });
+    } catch(err) {
         console.error(err);
         res.status(500).json(err);
-    });
+    }
 });
 
 export default router;

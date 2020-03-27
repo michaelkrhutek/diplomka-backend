@@ -43,8 +43,10 @@ export const createFinancialAccount = async (data: INewFinancialAccount): Promis
 
 
 export const getAllFinancialAccounts = async (financialUnitId: string): Promise<IFinancialAccountDoc[]> => {
-    const financialAccounts: IFinancialAccountDoc[] = await FinancialAccountModel.find({ financialUnit: financialUnitId }).exec()
-        .catch((err) => {
+    const financialAccounts: IFinancialAccountDoc[] = await FinancialAccountModel
+        .find({ financialUnit: financialUnitId })
+        .sort({ code: 1 })
+        .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání finančních účtů');
         });

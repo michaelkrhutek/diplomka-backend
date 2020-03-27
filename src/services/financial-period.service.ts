@@ -15,7 +15,7 @@ export const getIsFinancialPeriodExistsWithDate = async (financialUnitId: string
 
 
 export const getAllFinancialPeriods = async (financialUnitId: string): Promise<IFinancialPeriodDoc[]> => {
-    const financialPeriods: IFinancialPeriodDoc[] = await FinancialPeriodModel.find({ financialUnitId }).exec()
+    const financialPeriods: IFinancialPeriodDoc[] = await FinancialPeriodModel.find({ financialUnit: financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání finančních obdobi');
@@ -40,7 +40,7 @@ export const getFirstFinancialPeriod = async (financialUnitId: string): Promise<
 
 export const getLastFinancialPeriod = async (financialUnitId: string): Promise<IFinancialPeriodDoc | null> => {
     const lastFinancialPeriod: IFinancialPeriodDoc | null = await FinancialPeriodModel
-        .findOne({ financialUnitId })
+        .findOne({ financialUnit: financialUnitId })
         .sort({ periodIndex: -1 })
         .exec().catch((err) => {
             console.error(err);
@@ -81,7 +81,7 @@ export const createFinancialPeriod = async (requestData: INewFinancialPeriodRequ
 
 
 export const deleteAllFinancialPeriods = async (financialUnitId: string): Promise<'OK'> => {
-    await FinancialPeriodModel.deleteMany({ financialUnitId }).exec()
+    await FinancialPeriodModel.deleteMany({ financialUnit: financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při odstraňování finančních obdobi');            

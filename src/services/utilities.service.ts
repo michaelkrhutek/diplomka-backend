@@ -4,8 +4,8 @@ export const getRoundedNumber = (n: number, precision: number): number => {
 
 export const getUTCDate = (d: Date, endDay = false): Date => {
     if (endDay) {
-        return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), 23, 59, 59, 999);
+        return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999));
     } else {
-        return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), 0, 0, 0, 0);
+        return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0));
     }
 }

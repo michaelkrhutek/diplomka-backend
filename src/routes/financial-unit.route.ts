@@ -37,7 +37,7 @@ router.delete('/delete-financial-unit', (req: Request, res: Response) => {
     const financialUnitId: string = req.query.id;
     deleteFinancialUnit(financialUnitId)
         .then(() => {
-            res.send('OK');
+            res.send({ message: 'Deleted' });
         })
         .catch((err) => {
             console.error(err);

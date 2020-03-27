@@ -20,7 +20,7 @@ router.post('/create-inventory-item', (req: Request, res: Response) => {
     inventoryItemService.createInventoryItem(
         { name, financialUnit: financialUnitId, inventoryGroup: inventoryGroupId }
     ).then((inventoryItem) => {
-        res.send(inventoryItem);
+        res.json(inventoryItem);
     }).catch((err) => {
         console.error(err);
         res.status(500).json(err);

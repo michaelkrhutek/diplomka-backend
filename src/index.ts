@@ -9,6 +9,7 @@ import financialAccountRouter from './routes/financial-account.route';
 import financialTransactionRouter from './routes/financial-transaction.route';
 import inventoryGroupRouter from './routes/inventory-group.route';
 import inventoryItemRouter from './routes/inventory-item.route';
+import inventoryTransactionTemplatesRouter from './routes/inventory-transaction-template.route';
 import inventoryTransactionRouter from './routes/inventory-transaction.route';
 
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api/financial-account', financialAccountRouter);
 app.use('/api/financial-transaction', financialTransactionRouter);
 app.use('/api/inventory-group', inventoryGroupRouter);
 app.use('/api/inventory-item', inventoryItemRouter);
+app.use('/api/inventory-transaction-template', inventoryTransactionTemplatesRouter);
 app.use('/api/inventory-transaction', inventoryTransactionRouter);
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))

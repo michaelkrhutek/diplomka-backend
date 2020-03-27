@@ -2,9 +2,27 @@ import {
     IInventoryTransactionTemplateDoc,
     InventoryTransactionTemplateModel,
     INewInventoryTransactionTemplate,
+    IInventoryTransactionTemplatePopulatedDoc,
 } from "../models/inventory-transaction-template.model";
 import { IDefaultInventoryTransactionTemplateData } from "../default-data";
 import { IFinancialAccountDoc } from "../models/financial-account.model";
+
+
+
+export const getInventoryTransactionTemplatesWithPopulatedRefs = async (
+    inventoryGroupId: string
+): Promise<IInventoryTransactionTemplatePopulatedDoc[]> => {
+    const inventoryTransactionTemplates: IInventoryTransactionTemplatePopulatedDoc[] = await InventoryTransactionTemplateModel
+    .find({ inventoryGroup: inventoryGroupId })
+    .populate('inventoryGroup')
+    .populate('debitAccount')
+    .populate('creditAccount')
+    .exec().catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při načítání šablon transakcí');
+    });
+return inventoryTransactionTemplates; 
+}
 
 
 
