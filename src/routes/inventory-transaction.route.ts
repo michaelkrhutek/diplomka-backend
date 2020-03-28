@@ -4,7 +4,7 @@ import * as inventoryTransactionService from '../services/inventory-transaction.
 
 const router: Router = Router();
 
-router.get('/get-all-inventory-transactions', (req: Request, res: Response) => {
+router.get('/get-inventory-transactions', (req: Request, res: Response) => {
     const financialUnitId: string = req.query.financialUnitId;
     inventoryTransactionService.getPopulatedInventoryTransactions(financialUnitId)
         .then((inventoryTransactions) => {
@@ -19,6 +19,7 @@ router.get('/get-all-inventory-transactions', (req: Request, res: Response) => {
 router.post('/create-inventory-transaction', (req: Request, res: Response) => {
     const type: InventoryTransactionType = req.query.type;
     const data: INewInventoryTransactionRequestData<any> = req.body;
+    data.effectiveDate = new Date(data.effectiveDate);
     inventoryTransactionService.createInventoryTransaction(type, data)
         .then((inventoryTransaction) => {
             res.send(inventoryTransaction);

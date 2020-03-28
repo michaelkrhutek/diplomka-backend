@@ -1,6 +1,10 @@
 import { InventoryItemModel, IInventoryItemDoc, INewInventoryItem, IInventoryItemPopulatedDoc } from '../models/inventory-item.model';
 import * as financialUnitService from './financial-unit.service';  
 import * as inventoryGroupService from './inventory-group.service';
+import * as inventoryTransactionService from './inventory-transaction.service';
+import { IInventoryTransactionDoc } from '../models/inventory-transaction.model';
+import { IStock } from '../models/stock.model';
+import { IInventoryItemStock } from '../models/inventory-item-stock.model';
 
 
 export const getIsInventoryItemExist = async (inventoryItemId: string, financialUnitId: string): Promise<boolean> => {
@@ -59,3 +63,34 @@ export const deleteAllInventoryItems = async (financialUnitId: string): Promise<
         });
     return 'OK';
 };
+
+
+
+export const getInventoryItemStockTillDate = async (inventoryItemId: string, effectiveDate: Date): Promise<IStock> => {
+    const inventoryTransaction: IInventoryTransactionDoc<any> | null = await inventoryTransactionService
+        .getLastInventoryTransactionTillEffectiveDate(inventoryItemId, effectiveDate);
+    if (!inventoryTransaction) {
+        const stock: IStock = {
+            totalStockQuantity: 0,
+            totalStockCost: 0,
+            batches: []
+        };
+        return stock;
+    }
+    return inventoryTransaction.stock;
+}
+
+
+
+export const getAllInventoryItemsStocksTillDate = async (financialUnitId: string, effectiveDate: Date): Promise<IInventoryItemStock[]> => {
+    const inventoryItems: IInventoryItemPopulatedDoc[] = await getInventoryItemsWithPopulatedRefs(financialUnitId);
+    const stocks: IStock[] = await Promise.all(inventoryItems.map(item => getInventoryItemStockTillDate(item.id, effectiveDate)));
+    return inventoryItems.map((inventoryItem, i) => {
+        const inventoryItemStock: IInventoryItemStock = {
+            _id: inventoryItem.id,
+            inventoryItem: inventoryItem,
+            stock: stocks[i]
+        };
+        return inventoryItemStock;
+    });
+}

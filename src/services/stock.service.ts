@@ -128,4 +128,4 @@ export const getStockIncrementResult = (
         stock,
         changeCost: utilitiesService.getRoundedNumber(newStockBatch.quantity * newStockBatch.costPerUnit, 2)
     };
-} 
+}

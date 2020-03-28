@@ -9,8 +9,8 @@ export interface IAccountTurnover {
 }
 
 export interface ITrialBalanceAccount {
-    id: string;
-    name: string;
+    _id: string;
+    account: IFinancialAccount | null;
     debitAmount: number;
     debitEntriesCount: number;
     creditAmount: number;

@@ -1,5 +1,5 @@
 import { FinancialTransactionModel, INewFinancialTransaction, IFinancialTransactionDoc } from '../models/financial-transaction.model';
-import { Error } from 'mongoose';
+import { Error, Schema } from 'mongoose';
 import * as financialPeriodService from './financial-period.service';
 import * as financialAccountService from './financial-account.service';
 
@@ -77,8 +77,34 @@ export const deleteInactiveFinancialTransaction = async (
 
 
 export const getAllFinancialTransactions = async (financialUnitId: string): Promise<IFinancialTransactionDoc[]> => {
-    const financialTransactions: IFinancialTransactionDoc[] = await FinancialTransactionModel.find({ financialUnitId })
-        .catch((err) => {
+    const financialTransactions: IFinancialTransactionDoc[] = await FinancialTransactionModel
+        .find({ financialUnit: financialUnitId })
+        .populate('debitAccount')
+        .populate('creditAccount')
+        .exec().catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání účetních zápisů');
+        });
+    return financialTransactions;
+}
+
+
+
+export const getFiltredFinancialTransaction = async (
+    financialUnitId: string,
+    accountId: string | null,
+    dateFrom: Date | null,
+    dateTo: Date | null,
+): Promise<IFinancialTransactionDoc[]> => {
+    const financialTransactions: IFinancialTransactionDoc[] = await FinancialTransactionModel
+        .find({
+            financialUnit: financialUnitId,
+            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date }
+        })
+        .or(accountId ? [{ debitAccount: accountId }, { creditAccount: accountId }] : [{_id: { $exists: true }}])
+        .populate('debitAccount')
+        .populate('creditAccount')
+        .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání účetních zápisů');
         });

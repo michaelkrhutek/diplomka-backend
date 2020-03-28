@@ -14,6 +14,17 @@ export const getIsFinancialPeriodExistsWithDate = async (financialUnitId: string
 
 
 
+export const getFinancialPeriod = async (id: string): Promise<IFinancialPeriodDoc | null> => {
+    const financialPeriod: IFinancialPeriodDoc | null = await FinancialPeriodModel.findById(id).exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání finančního obdobi');
+        });
+    return financialPeriod;    
+}
+
+
+
 export const getAllFinancialPeriods = async (financialUnitId: string): Promise<IFinancialPeriodDoc[]> => {
     const financialPeriods: IFinancialPeriodDoc[] = await FinancialPeriodModel.find({ financialUnit: financialUnitId }).exec()
         .catch((err) => {

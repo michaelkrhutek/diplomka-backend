@@ -1,10 +1,12 @@
 import { FinancialTransactionModel } from "../models/financial-transaction.model";
 import { mongoose } from "../mongoose-instance";
-import { FinancialAccountModel, IFinancialAccount } from "../models/financial-account.model";
+import { FinancialAccountModel, IFinancialAccount, IFinancialAccountDoc } from "../models/financial-account.model";
 import { Schema } from "mongoose";
 import { IAccountTurnover, ITrialBalance, ITrialBalanceAccount } from "../models/trial-balance.model";
 import * as utilitiesService from './utilities.service';
-
+import * as financialAccountService from './financial-account.service';
+import * as financialPeriodService from './financial-period.service';
+import { IFinancialPeriodDoc } from "../models/financial-period.model";
 
 const getAccountsTurnovers = (
     financialUnitId: string,
@@ -14,11 +16,11 @@ const getAccountsTurnovers = (
 ): Promise<IAccountTurnover[]> => {
     return FinancialTransactionModel.aggregate()
         .match({
-            financialUnitId: mongoose.Types.ObjectId(financialUnitId),
+            financialUnit: mongoose.Types.ObjectId(financialUnitId),
             effectiveDate: { $gte: startDate, $lte: endDate }
         })
         .group({
-            _id: type == 'debit' ? '$debitAccountId' : '$creditAccountId',
+            _id: type == 'debit' ? '$debitAccount' : '$creditAccount',
             count: { $sum: 1 },
             total: { $sum: '$amount' }
         })
@@ -29,6 +31,7 @@ const getAccountsTurnovers = (
             as: 'accounts'
         })
         .then((turnovers: { _id: Schema.Types.ObjectId, count: number, accounts: IFinancialAccount[], total: number }[]) => {
+            console.log(turnovers);
             const accountsTurnovers = turnovers.map(t => {
                 const accountTurnover: any = {
                     accountId: t._id.toString(),
@@ -45,6 +48,18 @@ const getAccountsTurnovers = (
 
 
 
+export const getFinancialPeriodTrialBalance = async (
+    financialPeriodId: string
+): Promise<ITrialBalance> => {
+    const financialPeriod: IFinancialPeriodDoc | null = await financialPeriodService.getFinancialPeriod(financialPeriodId);
+    if (!financialPeriod) {
+        throw new Error('Účetní období nenalezeno');   
+    }
+    return await getTrialBalance(financialPeriod.financialUnit, financialPeriod.startDate, financialPeriod.endDate);
+}
+
+
+
 export const getTrialBalance = async (
     financialUnitId: string,
     startDate: Date,
@@ -52,6 +67,7 @@ export const getTrialBalance = async (
 ): Promise<ITrialBalance> => {
     const startDateUTC: Date = utilitiesService.getUTCDate(startDate);
     const endDateUTC: Date = utilitiesService.getUTCDate(endDate);
+    // const financialAccounts: IFinancialAccountDoc[] = await financialAccountService.getAllFinancialAccounts(financialUnitId);
     const accountsTurnovers: IAccountTurnover[] = await Promise.all([
         getAccountsTurnovers(financialUnitId, 'debit', startDateUTC, endDateUTC),
         getAccountsTurnovers(financialUnitId, 'credit', startDateUTC, endDateUTC)
@@ -66,12 +82,24 @@ export const getTrialBalance = async (
     let totalDebitEntries: number = 0;
     let totalCreditAmount: number = 0;
     let totalCreditEntries: number = 0;
+    // financialAccounts.forEach((account) => {
+    //     const _id: string = account._id.toString();
+    //     const trialBalanceAccount: ITrialBalanceAccount = {
+    //         _id,
+    //         account,
+    //         debitAmount: 0,
+    //         debitEntriesCount: 0,
+    //         creditAmount: 0,
+    //         creditEntriesCount: 0
+    //     };
+    //     trialBalanceAccountsMap.set(_id, trialBalanceAccount);
+    // });
     accountsTurnovers.forEach((accountTurnover) => {
         const accountId: string = accountTurnover.account ? accountTurnover.account._id.toString() : 'null';
         const getNewTrialBalanceAccount = (accountTurnover: IAccountTurnover): ITrialBalanceAccount => {
             return {
-                id: accountTurnover.account ? accountTurnover.account._id.toString() : 'null',
-                name: accountTurnover.account ? accountTurnover.account.name : 'null',
+                _id: accountTurnover.account ? accountTurnover.account._id.toString() : 'null',
+                account: accountTurnover.account,
                 debitAmount: 0,
                 debitEntriesCount: 0,
                 creditAmount: 0,

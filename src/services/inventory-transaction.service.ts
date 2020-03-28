@@ -20,13 +20,24 @@ import { Error } from "mongoose";
 
 
 
-const getLastInventoryTransactionTillEffectiveDate = async (
+export const getLastInventoryTransactionTillEffectiveDate = async (
     inventoryItemId: string,
     effectiveDate: Date
 ): Promise<IInventoryTransactionDoc<any> | null> => {
+    const transactions = await InventoryTransactionModel
+    .find({
+        inventoryItem: inventoryItemId,
+        effectiveDate: { $lte: effectiveDate },
+        isActive: true
+    })
+    .sort({ inventoryItemTransactionIndex: -1 })
+    .exec().catch((err) => {
+        console.error(err);
+        throw ('Chyba při načítaní skladové transakce');
+    });
     const inventoryTransaction: IInventoryTransactionDoc<any> | null = await InventoryTransactionModel
         .findOne({
-            inventoryItemId,
+            inventoryItem: inventoryItemId,
             effectiveDate: { $lte: effectiveDate },
             isActive: true
         })
@@ -46,7 +57,7 @@ const getInventoryTransactionByTransactionIndex = async (
 ): Promise<IInventoryTransactionDoc<any> | null> => {
     const inventoryTransaction: IInventoryTransactionDoc<any> | null = await InventoryTransactionModel
         .findOne({
-            inventoryItemId,
+            inventoryItem: inventoryItemId,
             inventoryItemTransactionIndex,
             isActive: true
         })
@@ -131,6 +142,7 @@ const createIncrementInventoryTransaction = async (
     if (!stockDecrementType) {
         throw new Error(`Nenalezena ocenovaci metod pro vyskladneni`);
     }
+    const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
     const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
         previousInventoryTransaction.inventoryItemTransactionIndex + 1 :
         1;
@@ -140,14 +152,13 @@ const createIncrementInventoryTransaction = async (
     const newStockBatch: IStockBatch = {
         quantity: requestData.specificData.quantity,
         costPerUnit: requestData.specificData.costPerUnit,
-        added: new Date(requestData.effectiveDate),
+        added: new Date(effectiveDate),
         transactionIndex: inventoryItemTransactionIndex
     };
     const stock: IStock = stockService.getStockIncrementResult(currentStock, newStockBatch).stock;
     const totalTransactionAmount: number = utilitiesService.getRoundedNumber(
         requestData.specificData.quantity * requestData.specificData.costPerUnit, 2
     );
-    const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
     const newTransactionData: INewInventoryTransaction<IIncrementInventoryTransactionSpecificData> = {
         type: InventoryTransactionType.Increment,
         description: requestData.description,
@@ -201,6 +212,7 @@ const createDecrementInventoryTransaction = async (
     if (!stockDecrementType) {
         throw new Error(`Nenalezena ocenovaci metoda`);
     }
+    const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
     const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
         previousInventoryTransaction.inventoryItemTransactionIndex + 1 :
         1;
@@ -210,7 +222,6 @@ const createDecrementInventoryTransaction = async (
     const stockDecrementResult: IStockQuantityChangeResult = stockService.getStockDecrementResult(
         currentStock, requestData.specificData.quantity, stockDecrementType
     );
-    const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
     const newInventoryTransactionData: INewInventoryTransaction<IDecrementInventoryTransactionSpecificData> = {
         type: InventoryTransactionType.Decrement,
         description: requestData.description,
@@ -234,7 +245,7 @@ const createDecrementInventoryTransaction = async (
         financialUnit: inventoryItem.financialUnit,
         debitAccount: requestData.debitAccountId,
         creditAccount: requestData.creditAccountId,
-        effectiveDate: effectiveDate,
+        effectiveDate,
         amount: stockDecrementResult.changeCost,
         inventoryItemTransactionIndex,
         isDerivedTransaction: !!transactionIdForcingDerivation,
@@ -376,7 +387,6 @@ export const createInventoryTransaction = async (
         type, requestData, previousInventoryTransaction, null
     ).catch((err) => {
         console.error(err);
-        deleteInactiveInventoryTransaction(newInventoryTransaction.id);
         throw new Error('Chyba pri vytvareni nove transakce');
     });
     await deriveSubsequentInventoryTransactions(newInventoryTransaction, newInventoryTransaction.id, 1, 10).catch((err) => {
@@ -397,9 +407,32 @@ export const createInventoryTransaction = async (
 }
 
 
+
 export const getAllInventoryTransactions = async (financialUnitId: string): Promise<IInventoryTransactionDoc<any>[]> => {
     const inventoryTransactions: IInventoryTransactionDoc<any>[] = await InventoryTransactionModel.find({ financialUnitId }).exec()
         .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání skladových transakcí');
+        });
+    return inventoryTransactions;
+}
+
+
+
+export const getFiltredInventoryTransactions = async (
+    financialUnitId: string,
+    inventoryItemId: string,
+    transactionType: InventoryTransactionType,
+    dateFrom: Date,
+    dateTo: Date,
+): Promise<IInventoryTransactionDoc<any>[]> => {
+    const inventoryTransactions: IInventoryTransactionDoc<any>[] = await InventoryTransactionModel
+        .find({ financialUnitId })
+        .where(inventoryItemId ? { path: 'inventoryItem', val: inventoryItemId } : {})
+        .where(transactionType ? { path: 'type', val: transactionType } : {})
+        .where(dateFrom ? { path: 'effectiveDate', val: { $gte: dateFrom } } : {})
+        .where(dateTo ? { path: 'effectiveDate', val: { $lte: dateFrom } } : {})
+        .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání skladových transakcí');
         });
