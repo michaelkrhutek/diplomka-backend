@@ -4,7 +4,7 @@ import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 import { IStock } from './stock.model';
 import { IInventoryItemDoc } from './inventory-item.model';
 import { IFinancialUnitDoc } from './financial-unit.model';
-import { IFinancialAccount } from './financial-account.model';
+import { IFinancialAccount, IFinancialAccountDoc } from './financial-account.model';
 import { IFinancialTransactionDoc } from './financial-transaction.model';
 
 export enum InventoryTransactionType {
@@ -46,16 +46,16 @@ interface IInventoryTransactionBase<SpecificData> {
 interface IReferences {
     financialUnit: IFinancialUnitDoc['_id'];
     inventoryItem: IInventoryItemDoc['_id'];
-    debitAccount: IFinancialAccount['_id'];
-    creditAccount: IFinancialAccount['_id'];
+    debitAccount: IFinancialAccountDoc['_id'];
+    creditAccount: IFinancialAccountDoc['_id'];
     transactionForcingDerivation: IInventoryTransactionDoc<any>['_id'] | null;
 }
 
 interface IPopulatedReferences {
     financialUnit: IFinancialUnitDoc;
     inventoryItem: IInventoryItemDoc['_id'];
-    debitAccount: IFinancialAccount;
-    creditAccount: IFinancialAccount;
+    debitAccount: IFinancialAccountDoc;
+    creditAccount: IFinancialAccountDoc;
     transactionForcingDerivation: IInventoryTransactionDoc<any>['_id'] | null;
 }
 

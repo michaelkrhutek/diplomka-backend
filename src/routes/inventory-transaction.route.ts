@@ -30,4 +30,16 @@ router.post('/create-inventory-transaction', (req: Request, res: Response) => {
         });
 });
 
+router.delete('/delete-inventory-transaction', (req: Request, res: Response) => {
+    const id: string = req.query.id;
+    inventoryTransactionService.deleteInventoryTransaction(id)
+        .then(() => {
+            res.send();
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).json(err);
+        });
+});
+
 export default router;

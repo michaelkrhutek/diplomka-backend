@@ -104,6 +104,7 @@ export const getFiltredFinancialTransaction = async (
         .or(accountId ? [{ debitAccount: accountId }, { creditAccount: accountId }] : [{_id: { $exists: true }}])
         .populate('debitAccount')
         .populate('creditAccount')
+        .sort({ effectiveDate: 1 })
         .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání účetních zápisů');
@@ -114,7 +115,7 @@ export const getFiltredFinancialTransaction = async (
 
 
 export const deleteAllFinancialTransactions = async (financialUnitId: string): Promise<'OK'> => {
-    await FinancialTransactionModel.deleteMany({ financialUnitId })
+    await FinancialTransactionModel.deleteMany({ financialUnit: financialUnitId })
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při odstraňování účetních zápisů');

@@ -49,7 +49,7 @@ router.delete('/delete-all-transactions', (req: Request, res: Response) => {
     const financialUnitId: string = req.query.id;
     deleteAllTransactions(financialUnitId)
         .then(() => {
-            res.send('OK');
+            res.send({ message: 'OK' });
         })
         .catch((err) => {
             console.error(err);

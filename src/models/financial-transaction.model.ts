@@ -11,7 +11,7 @@ interface IFinancialTransactionBase {
     inventoryTransaction: string;
     inventoryItemTransactionIndex: number;
     isDerivedTransaction: boolean;
-    inventoryTransactionIdForcingDerivation: string | null;
+    inventoryTransactionForcingDerivation: string | null;
     isActive?: boolean;
 }
 
@@ -76,7 +76,7 @@ const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
         type: Boolean,
         required: true,        
     },
-    inventoryTransactionIdForcingDerivation: {
+    inventoryTransactionForcingDerivation: {
         type: Schema.Types.ObjectId,
         ref: 'InventoryTransaction',
         default: null
