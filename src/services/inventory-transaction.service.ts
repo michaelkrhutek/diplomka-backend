@@ -490,17 +490,20 @@ export const getAllInventoryTransactions = async (financialUnitId: string): Prom
 
 export const getFiltredInventoryTransactions = async (
     financialUnitId: string,
-    inventoryItemId: string,
-    transactionType: InventoryTransactionType,
-    dateFrom: Date,
-    dateTo: Date,
-): Promise<IInventoryTransactionDoc<any>[]> => {
-    const inventoryTransactions: IInventoryTransactionDoc<any>[] = await InventoryTransactionModel
-        .find({ financialUnitId })
-        .where(inventoryItemId ? { path: 'inventoryItem', val: inventoryItemId } : {})
-        .where(transactionType ? { path: 'type', val: transactionType } : {})
-        .where(dateFrom ? { path: 'effectiveDate', val: { $gte: dateFrom } } : {})
-        .where(dateTo ? { path: 'effectiveDate', val: { $lte: dateFrom } } : {})
+    inventoryItemId: string | null,
+    transactionType: InventoryTransactionType | null,
+    dateFrom: Date | null,
+    dateTo: Date | null,
+): Promise<IInventoryTransactionPopulatedDoc<any>[]> => {
+    const inventoryTransactions: IInventoryTransactionPopulatedDoc<any>[] = await InventoryTransactionModel
+        .find({
+            financialUnit: financialUnitId,
+            inventoryItem:  inventoryItemId || { $exists: true },
+            type: transactionType || { $exists: true },
+            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date }
+        })
+        .populate('inventoryItem')
+        .sort({ effectiveDate: 1 })
         .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání skladových transakcí');

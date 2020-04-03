@@ -1,3 +1,7 @@
 /node_modules
 /.vscode
 credentials.json
+src/localhost.key
+src/localhost.cer
+src/client/*
+/dist
