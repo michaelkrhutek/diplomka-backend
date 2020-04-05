@@ -77,7 +77,7 @@ export const getInventoryItemStockTillDate = async (inventoryItemId: string, eff
         };
         return stock;
     }
-    return inventoryTransaction.stock;
+    return inventoryTransaction.stockAfterTransaction;
 }
 
 

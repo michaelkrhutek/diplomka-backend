@@ -4,8 +4,7 @@ import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 import { IStock } from './stock.model';
 import { IInventoryItemDoc } from './inventory-item.model';
 import { IFinancialUnitDoc } from './financial-unit.model';
-import { IFinancialAccount, IFinancialAccountDoc } from './financial-account.model';
-import { IFinancialTransactionDoc } from './financial-transaction.model';
+import { IFinancialAccountDoc } from './financial-account.model';
 
 export enum InventoryTransactionType {
     Increment = 'increment',
@@ -37,7 +36,8 @@ interface IInventoryTransactionBase<SpecificData> {
     effectiveDate: Date;
     specificData: SpecificData;
     totalTransactionAmount: number;
-    stock: IStock;
+    stockBeforeTransaction: IStock;
+    stockAfterTransaction: IStock;
     inventoryItemTransactionIndex: number;
     isDerivedTransaction: boolean;
     isActive: boolean;
@@ -109,7 +109,22 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         type: Number,
         required: true
     },
-    stock: {
+    stockBeforeTransaction: {
+        type: {
+            totalStockQuantity: Number,
+            totalStockCost: Number,
+            batches: [
+                {
+                    quantity: Number,
+                    costPerUnit: Number,
+                    added: Date,
+                    transactionIndex: Number
+                }
+            ]
+        },
+        required: true
+    },
+    stockAfterTransaction: {
         type: {
             totalStockQuantity: Number,
             totalStockCost: Number,

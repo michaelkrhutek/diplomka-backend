@@ -167,7 +167,7 @@ const createIncrementInventoryTransaction = async (
         previousInventoryTransaction.inventoryItemTransactionIndex + 1 :
         1;
     const currentStock: IStock = previousInventoryTransaction ?
-        previousInventoryTransaction.stock :
+        previousInventoryTransaction.stockAfterTransaction :
         { totalStockQuantity: 0, totalStockCost: 0, batches: [] };
     const newStockBatch: IStockBatch = {
         quantity: requestData.specificData.quantity,
@@ -190,7 +190,8 @@ const createIncrementInventoryTransaction = async (
         effectiveDate,
         inventoryItemTransactionIndex,
         specificData: requestData.specificData,
-        stock,
+        stockBeforeTransaction: currentStock,
+        stockAfterTransaction: stock,
         isDerivedTransaction: !!transactionIdForcingDerivation,
         transactionForcingDerivation: transactionIdForcingDerivation,
         isActive: false
@@ -237,7 +238,7 @@ const createDecrementInventoryTransaction = async (
         previousInventoryTransaction.inventoryItemTransactionIndex + 1 :
         1;
     const currentStock: IStock = previousInventoryTransaction ?
-        previousInventoryTransaction.stock :
+        previousInventoryTransaction.stockAfterTransaction :
         { totalStockQuantity: 0, totalStockCost: 0, batches: [] };
     const stockDecrementResult: IStockQuantityChangeResult = stockService.getStockDecrementResult(
         currentStock, requestData.specificData.quantity, stockDecrementType
@@ -253,7 +254,8 @@ const createDecrementInventoryTransaction = async (
         effectiveDate,
         inventoryItemTransactionIndex,
         specificData: requestData.specificData,
-        stock: stockDecrementResult.stock,
+        stockBeforeTransaction: currentStock,
+        stockAfterTransaction: stockDecrementResult.stock,
         isDerivedTransaction: !!transactionIdForcingDerivation,
         transactionForcingDerivation: transactionIdForcingDerivation,
         isActive: false
