@@ -23,10 +23,8 @@ const generateDefaultDataInFinancialUnit = async (financialUnitId: string): Prom
     startDate.setMonth(0);
     startDate.setDate(1);
     const endDate: Date = utilitiesService.getUTCDate(new Date(), true);
-    console.log(endDate.toString());
     endDate.setMonth(11);
     endDate.setDate(31);
-    console.log(endDate.toString());
     await financialPeriodService.createFinancialPeriod({ name: 'Účetní období 1', financialUnitId, startDate, endDate });
     const financialAccounts: IFinancialAccountDoc[] = await financialAccountService
         .createDefaultFinancialAccounts(financialUnitId, defaultAccounts);
