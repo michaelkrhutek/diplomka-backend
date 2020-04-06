@@ -25,17 +25,6 @@ export const getLastInventoryTransactionTillEffectiveDate = async (
     inventoryItemId: string,
     effectiveDate: Date
 ): Promise<IInventoryTransactionDoc<any> | null> => {
-    const transactions = await InventoryTransactionModel
-    .find({
-        inventoryItem: inventoryItemId,
-        effectiveDate: { $lte: effectiveDate },
-        isActive: true
-    })
-    .sort({ inventoryItemTransactionIndex: -1 })
-    .exec().catch((err) => {
-        console.error(err);
-        throw ('Chyba při načítaní skladové transakce');
-    });
     const inventoryTransaction: IInventoryTransactionDoc<any> | null = await InventoryTransactionModel
         .findOne({
             inventoryItem: inventoryItemId,
@@ -571,6 +560,7 @@ export const deleteAllInventoryTransactions = async (financialUnitId: string): P
             console.error(err);
             throw new Error('Chyba při odstraňování skladových transakcí');
         });
+    await financialTransactionService.deleteAllFinancialTransactions(financialUnitId);
     return 'OK';
 };
 

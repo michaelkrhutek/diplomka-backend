@@ -2,8 +2,10 @@ import { InventoryGroupModel, IInventoryGroupDoc, INewInventoryGroup } from "../
 import { StockDecrementType } from '../models/stock.model';
 import * as financialUnitService from './financial-unit.service'; 
 import * as inventoryTransactionTemplateService from './inventory-transaction-template.service'; 
+import * as inventoryItemService from './inventory-item.service';
 import { IDefaultInventoryGroupData } from "../default-data";
 import { IFinancialAccountDoc } from "../models/financial-account.model";
+import { InventoryItemModel } from "../models/inventory-item.model";
 
 
 
@@ -79,10 +81,22 @@ export const deleteAllInventoryGroups = async (financialUnitId: string): Promise
     await InventoryGroupModel.deleteMany({ financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při odstraňování skladových položek');            
+            throw new Error('Chyba při odstraňování skupin');            
         });
     return 'OK';
 };
+
+
+
+export const deleteInventoryGroup = async (id: string): Promise<void> => {
+    await InventoryGroupModel.findByIdAndDelete(id).exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při odstraňování skupiny');            
+        });
+    const items = await InventoryItemModel.find({ inventoryGroup: id })
+    await Promise.all(items.map(item => inventoryItemService.deleteInventoryItem(item._id)));
+}
 
 
 

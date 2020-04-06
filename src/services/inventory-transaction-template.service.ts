@@ -3,10 +3,12 @@ import {
     InventoryTransactionTemplateModel,
     INewInventoryTransactionTemplate,
     IInventoryTransactionTemplatePopulatedDoc,
+    IInventoryTransactionTemplate,
 } from "../models/inventory-transaction-template.model";
 import { IDefaultInventoryTransactionTemplateData } from "../default-data";
 import { IFinancialAccountDoc } from "../models/financial-account.model";
-
+import * as financialUnitService from './financial-unit.service';
+import * as inventoryGroupService from './inventory-group.service';
 
 
 export const getInventoryTransactionTemplatesWithPopulatedRefs = async (
@@ -22,6 +24,42 @@ export const getInventoryTransactionTemplatesWithPopulatedRefs = async (
         throw new Error('Chyba při načítání šablon transakcí');
     });
 return inventoryTransactionTemplates; 
+}
+
+
+
+export const getAllInventoryTransactionTemplatesWithPopulatedRefs = async (
+    financialUnitId: string
+): Promise<IInventoryTransactionTemplatePopulatedDoc[]> => {
+    const inventoryTransactionTemplates: IInventoryTransactionTemplatePopulatedDoc[] = await InventoryTransactionTemplateModel
+    .find({ financialUnit: financialUnitId })
+    .populate('inventoryGroup')
+    .populate('debitAccount')
+    .populate('creditAccount')
+    .exec().catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při načítání šablon transakcí');
+    });
+return inventoryTransactionTemplates; 
+}
+
+
+
+export const createInventoryTransactionTemplate = async (
+    data: INewInventoryTransactionTemplate
+): Promise<IInventoryTransactionTemplate> => {
+    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnit))) {
+        throw new Error('Ucetni jednotka s danym ID nenalezena');
+    }
+    if (!(await inventoryGroupService.getIsInventoryGroupExist(data.inventoryGroup, data.financialUnit))) {
+        throw new Error('Skupina zasob s danym ID v dane ucetni jednotce nenalezena');
+    }
+    const transactionTemplate: IInventoryTransactionTemplateDoc = await new InventoryTransactionTemplateModel(data).save()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při vytváření šablony transakce');
+        });
+    return transactionTemplate;
 }
 
 
@@ -56,7 +94,18 @@ export const deleteAllInventoryTransactionTemplates = async (financialUnitId: st
     await InventoryTransactionTemplateModel.deleteMany({ financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při odstraňování sablon transakci');            
+            throw new Error('Chyba při odstraňování šablon');            
+        });
+    return 'OK';
+};
+
+
+
+export const deleteInventoryTransactionTemplates = async (id: string): Promise<'OK'> => {
+    await InventoryTransactionTemplateModel.findByIdAndDelete(id).exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při odstraňování šablony');            
         });
     return 'OK';
 };

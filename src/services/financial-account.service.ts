@@ -1,6 +1,9 @@
 import { FinancialAccountModel, IFinancialAccountDoc, INewFinancialAccount } from '../models/financial-account.model';
-import * as financialUnitService from './financial-unit.service';  
+import * as financialUnitService from './financial-unit.service'; 
+import * as inventoryTransactionService from './inventory-transaction.service'; 
 import { IDefaultFinancialAccountData } from '../default-data';
+import { InventoryTransactionModel } from '../models/inventory-transaction.model';
+import { FinancialTransactionModel } from '../models/financial-transaction.model';
 
 
 
@@ -61,5 +64,25 @@ export const deleteAllFinancialAccounts = async (financialUnitId: string): Promi
             console.error(err);
             throw new Error('Chyba při odstraňování finančních účtů');            
         });
+    await inventoryTransactionService.deleteAllInventoryTransactions(financialUnitId);
     return 'OK';
-}; 
+};
+
+
+
+export const deleteFinancialAccount = async (financialAccountId: string): Promise<void> => {
+    await FinancialAccountModel.findByIdAndDelete(financialAccountId).exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při odstraňování finančního účtu');            
+        });
+    await Promise.all([
+        InventoryTransactionModel.deleteMany({ debitAccount: financialAccountId }).exec(),
+        InventoryTransactionModel.deleteMany({ creditAccount: financialAccountId }).exec(),
+        FinancialTransactionModel.deleteMany({ debitAccount: financialAccountId }).exec(),
+        FinancialTransactionModel.deleteMany({ creditAccount: financialAccountId }).exec() 
+    ]).catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při odstraňování transakcí a účetních zápisů');       
+    });
+}

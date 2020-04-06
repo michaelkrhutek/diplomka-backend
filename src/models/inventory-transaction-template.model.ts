@@ -6,6 +6,14 @@ import { IInventoryGroupDoc } from "./inventory-group.model";
 import { IFinancialAccountDoc } from "./financial-account.model";
 import { IFinancialUnitDoc } from "./financial-unit.model";
 
+export interface INewInventoryTransactionTemplateRequestData {
+    description: string;
+    inventoryGroupId: string;
+    transactionType: string;
+    debitAccountId: string;
+    creditAccountId: string;
+}
+
 export interface IInventoryTransactionTemplateBase {
     description: string;
     transactionType: InventoryTransactionType;

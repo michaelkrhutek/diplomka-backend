@@ -1,5 +1,5 @@
 import { FinancialTransactionModel, INewFinancialTransaction, IFinancialTransactionDoc } from '../models/financial-transaction.model';
-import { Error, Schema } from 'mongoose';
+import { Error } from 'mongoose';
 import * as financialPeriodService from './financial-period.service';
 import * as financialAccountService from './financial-account.service';
 

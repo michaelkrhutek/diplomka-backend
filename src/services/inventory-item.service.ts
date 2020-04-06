@@ -2,9 +2,10 @@ import { InventoryItemModel, IInventoryItemDoc, INewInventoryItem, IInventoryIte
 import * as financialUnitService from './financial-unit.service';  
 import * as inventoryGroupService from './inventory-group.service';
 import * as inventoryTransactionService from './inventory-transaction.service';
-import { IInventoryTransactionDoc } from '../models/inventory-transaction.model';
+import { IInventoryTransactionDoc, InventoryTransactionModel } from '../models/inventory-transaction.model';
 import { IStock } from '../models/stock.model';
 import { IInventoryItemStock } from '../models/inventory-item-stock.model';
+import { FinancialTransactionModel } from '../models/financial-transaction.model';
 
 
 export const getIsInventoryItemExist = async (inventoryItemId: string, financialUnitId: string): Promise<boolean> => {
@@ -93,4 +94,14 @@ export const getAllInventoryItemsStocksTillDate = async (financialUnitId: string
         };
         return inventoryItemStock;
     });
+}
+
+
+
+export const deleteInventoryItem = async (id: string): Promise<void> => {
+    await InventoryItemModel.findByIdAndDelete(id).exec()
+    await Promise.all([
+        InventoryTransactionModel.deleteMany({ inventoryItem: id }).exec(),
+        FinancialTransactionModel.deleteMany({ inventoryItem: id }).exec()
+    ]);
 }
