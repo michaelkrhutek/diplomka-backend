@@ -6,6 +6,7 @@ import * as inventoryItemService  from './inventory-item.service';
 import * as inventoryTransactionTemplateService from './inventory-transaction-template.service';
 import * as inventoryTransactionService from './inventory-transaction.service';
 import * as financialPeriodService from './financial-period.service';
+import * as utilitiesService from './utilities.service';
 import { IFinancialAccountDoc } from '../models/financial-account.model';
 import { defaultAccounts, defaultInventoryGroups } from '../default-data';
 
@@ -18,13 +19,15 @@ export const getIsFinancialUnitExist = async (financialUnitId: string): Promise<
 
 
 const generateDefaultDataInFinancialUnit = async (financialUnitId: string): Promise<void> => {
-    const startDate: Date = new Date();
-    startDate.setDate(1);
+    const startDate: Date = utilitiesService.getUTCDate(new Date());
     startDate.setMonth(0);
-    const endDate: Date = new Date();
-    endDate.setDate(31);
+    startDate.setDate(1);
+    const endDate: Date = utilitiesService.getUTCDate(new Date(), true);
+    console.log(endDate.toString());
     endDate.setMonth(11);
-    await financialPeriodService.createFinancialPeriod({ name: 'Ucetni obdobi 1', financialUnitId, startDate, endDate });
+    endDate.setDate(31);
+    console.log(endDate.toString());
+    await financialPeriodService.createFinancialPeriod({ name: 'Účetní období 1', financialUnitId, startDate, endDate });
     const financialAccounts: IFinancialAccountDoc[] = await financialAccountService
         .createDefaultFinancialAccounts(financialUnitId, defaultAccounts);
     await inventoryGroupService.createDefaultInventoryGroups(financialUnitId, defaultInventoryGroups, financialAccounts);

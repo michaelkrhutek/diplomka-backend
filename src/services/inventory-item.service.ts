@@ -14,23 +14,6 @@ export const getIsInventoryItemExist = async (inventoryItemId: string, financial
 
 
 
-export const createInventoryItem = async (data: INewInventoryItem): Promise<IInventoryItemDoc> => {
-    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnit))) {
-        throw new Error('Ucetni jednotka s danym ID nenalezena');
-    }
-    if (!(await inventoryGroupService.getIsInventoryGroupExist(data.inventoryGroup, data.financialUnit))) {
-        throw new Error('Skupina zasob s danym ID v dane ucetni jednotce nenalezena');
-    }
-    const inventoryItem: IInventoryItemDoc = await new InventoryItemModel(data).save()
-        .catch((err) => {
-            console.error(err);
-            throw new Error('Chyba při vytváření skladové položky');
-        });
-    return inventoryItem;
-}
-
-
-
 export const getInventoryItemsWithPopulatedRefs = async (financialUnitId: string): Promise<IInventoryItemPopulatedDoc[]> => {
     const inventoryItems: IInventoryItemPopulatedDoc[] = await InventoryItemModel
         .find({ financialUnit: financialUnitId })
@@ -56,14 +39,44 @@ export const getInventoryItem = async (inventoryItemId: string): Promise<IInvent
 
 
 
-export const deleteAllInventoryItems = async (financialUnitId: string): Promise<'OK'> => {
+export const createInventoryItem = async (data: INewInventoryItem): Promise<IInventoryItemDoc> => {
+    if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnit))) {
+        throw new Error('Ucetni jednotka s danym ID nenalezena');
+    }
+    if (!(await inventoryGroupService.getIsInventoryGroupExist(data.inventoryGroup, data.financialUnit))) {
+        throw new Error('Skupina zasob s danym ID v dane ucetni jednotce nenalezena');
+    }
+    const inventoryItem: IInventoryItemDoc = await new InventoryItemModel(data).save()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při vytváření skladové položky');
+        });
+    return inventoryItem;
+}
+
+
+
+export const deleteAllInventoryItems = async (financialUnitId: string): Promise<void> => {
     await InventoryItemModel.deleteMany({ financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při odstraňování skladových položek');            
+            throw new Error('Chyba při odstraňování položek');            
         });
-    return 'OK';
+    await inventoryTransactionService.deleteAllInventoryTransactions(financialUnitId);
 };
+
+
+
+export const deleteInventoryItem = async (id: string): Promise<void> => {
+    await InventoryItemModel.findByIdAndDelete(id).exec()
+    await Promise.all([
+        InventoryTransactionModel.deleteMany({ inventoryItem: id }).exec(),
+        FinancialTransactionModel.deleteMany({ inventoryItem: id }).exec()
+    ]).catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při odstraňování transakcí a účetních zápisů');
+    });
+}
 
 
 
@@ -94,14 +107,4 @@ export const getAllInventoryItemsStocksTillDate = async (financialUnitId: string
         };
         return inventoryItemStock;
     });
-}
-
-
-
-export const deleteInventoryItem = async (id: string): Promise<void> => {
-    await InventoryItemModel.findByIdAndDelete(id).exec()
-    await Promise.all([
-        InventoryTransactionModel.deleteMany({ inventoryItem: id }).exec(),
-        FinancialTransactionModel.deleteMany({ inventoryItem: id }).exec()
-    ]);
 }

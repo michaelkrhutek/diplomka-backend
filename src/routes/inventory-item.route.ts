@@ -39,4 +39,24 @@ router.post('/create-inventory-item', (req: Request, res: Response) => {
     });
 });
 
+router.delete('/delete-all-inventory-items', (req: Request, res: Response) => {
+    const financialUnitId: string = req.query.financialUnitId;
+    inventoryItemService.deleteAllInventoryItems(financialUnitId).then(() => {
+        res.send();
+    }).catch((err) => {
+        console.error(err);
+        res.status(500).json(err);
+    });
+});
+
+router.delete('/delete-inventory-item', (req: Request, res: Response) => {
+    const id: string = req.query.id;
+    inventoryItemService.deleteInventoryItem(id).then(() => {
+        res.send();
+    }).catch((err) => {
+        console.error(err);
+        res.status(500).json(err);
+    });
+});
+
 export default router;

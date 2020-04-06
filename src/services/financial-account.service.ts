@@ -1,6 +1,7 @@
 import { FinancialAccountModel, IFinancialAccountDoc, INewFinancialAccount } from '../models/financial-account.model';
 import * as financialUnitService from './financial-unit.service'; 
-import * as inventoryTransactionService from './inventory-transaction.service'; 
+import * as inventoryTransactionService from './inventory-transaction.service';
+import * as inventoryTransactionTemplateService from './inventory-transaction-template.service'; 
 import { IDefaultFinancialAccountData } from '../default-data';
 import { InventoryTransactionModel } from '../models/inventory-transaction.model';
 import { FinancialTransactionModel } from '../models/financial-transaction.model';
@@ -58,14 +59,16 @@ export const getAllFinancialAccounts = async (financialUnitId: string): Promise<
 
 
 
-export const deleteAllFinancialAccounts = async (financialUnitId: string): Promise<'OK'> => {
+export const deleteAllFinancialAccounts = async (financialUnitId: string): Promise<void> => {
     await FinancialAccountModel.deleteMany({ financialUnit: financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při odstraňování finančních účtů');            
+            throw new Error('Chyba při odstraňování účtů');            
         });
-    await inventoryTransactionService.deleteAllInventoryTransactions(financialUnitId);
-    return 'OK';
+    await Promise.all([
+        inventoryTransactionTemplateService.deleteAllInventoryTransactionTemplates(financialUnitId),
+        inventoryTransactionService.deleteAllInventoryTransactions(financialUnitId)
+    ]);
 };
 
 
@@ -74,9 +77,10 @@ export const deleteFinancialAccount = async (financialAccountId: string): Promis
     await FinancialAccountModel.findByIdAndDelete(financialAccountId).exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při odstraňování finančního účtu');            
+            throw new Error('Chyba při odstraňování účtu');            
         });
     await Promise.all([
+        inventoryTransactionTemplateService.deleteInventoryTransactionTemplatesWithFinancialAccount(financialAccountId),
         InventoryTransactionModel.deleteMany({ debitAccount: financialAccountId }).exec(),
         InventoryTransactionModel.deleteMany({ creditAccount: financialAccountId }).exec(),
         FinancialTransactionModel.deleteMany({ debitAccount: financialAccountId }).exec(),

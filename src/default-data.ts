@@ -7,18 +7,18 @@ export interface IDefaultFinancialAccountData {
 };
 
 export const defaultAccounts: IDefaultFinancialAccountData[] = [
-    { code: '112', name: 'Material' },
+    { code: '112', name: 'Materiál' },
     { code: '122', name: 'Polotovary' },
-    { code: '123', name: 'Vyrobky' },
-    { code: '132', name: 'Zbozi' },
-    { code: '321', name: 'Zavazky z obchodnich vztahu' },
-    { code: '501', name: 'Spotreba materialu' },
-    { code: '504', name: 'Prodane zbozi' },
-    { code: '542', name: 'Prodany material' },
-    { code: '582', name: 'Zmena stavu polotovaru' },
-    { code: '583', name: 'Zmena stavu vyrobku' },
-    { code: '549', name: 'Manka a skody z provozni cinnosti' },
-    { code: '648', name: 'Ostatni provozni vynosy' },
+    { code: '123', name: 'Výrobky' },
+    { code: '132', name: 'Zboží' },
+    { code: '321', name: 'Závazky z obchodních vztahů' },
+    { code: '501', name: 'Spotřeba materiálu' },
+    { code: '504', name: 'Prodané zboží' },
+    { code: '542', name: 'Prodaný materiál' },
+    { code: '582', name: 'Změna stavu polotovarů' },
+    { code: '583', name: 'Změna stavu výrobků' },
+    { code: '549', name: 'Manka a škody z provozní činnosti' },
+    { code: '648', name: 'Ostatní provozní výnosy' },
 ];
 
 export interface IDefaultInventoryTransactionTemplateData {
@@ -36,29 +36,29 @@ export interface IDefaultInventoryGroupData {
 
 export const defaultInventoryGroups: IDefaultInventoryGroupData[] = [
     {
-        name: 'Material',
+        name: 'Materiál',
         defaultStockDecrementType: StockDecrementType.FIFO,
         inventoryTransactionTemplates: [
             {
-                description: 'Naskladneni materialu',
+                description: 'Naskladnění materiálu',
                 transactionType: InventoryTransactionType.Increment,
                 debitAccountCode: '112',
                 creditAccountCode: '321'
             },
             {
-                description: 'Spotreba materialu',
+                description: 'Spotřeba materiálu',
                 transactionType: InventoryTransactionType.Decrement,
                 debitAccountCode: '501',
                 creditAccountCode: '112'
             },
             {
-                description: 'Inventurni prebytek',
+                description: 'Inventurní přebytek',
                 transactionType: InventoryTransactionType.Increment,
                 debitAccountCode: '112',
                 creditAccountCode: '648'
             },
             {
-                description: 'Inventurni manko',
+                description: 'Inventurní manko',
                 transactionType: InventoryTransactionType.Decrement,
                 debitAccountCode: '549',
                 creditAccountCode: '112'
@@ -70,25 +70,25 @@ export const defaultInventoryGroups: IDefaultInventoryGroupData[] = [
         defaultStockDecrementType: StockDecrementType.FIFO,
         inventoryTransactionTemplates: [
             {
-                description: 'Naskladneni polotovaru',
+                description: 'Naskladnění polotovarů',
                 transactionType: InventoryTransactionType.Increment,
                 debitAccountCode: '122',
                 creditAccountCode: '582'
             },
             {
-                description: 'Vyskladneni polotovaru',
+                description: 'Vyskladnění polotovarů',
                 transactionType: InventoryTransactionType.Decrement,
                 debitAccountCode: '122',
                 creditAccountCode: '582'
             },
             {
-                description: 'Inventurni prebytek',
+                description: 'Inventurní přebytek',
                 transactionType: InventoryTransactionType.Increment,
                 debitAccountCode: '122',
                 creditAccountCode: '648'
             },
             {
-                description: 'Inventurni manko',
+                description: 'Inventurní manko',
                 transactionType: InventoryTransactionType.Decrement,
                 debitAccountCode: '549',
                 creditAccountCode: '122'
@@ -96,29 +96,29 @@ export const defaultInventoryGroups: IDefaultInventoryGroupData[] = [
         ]
     },
     {
-        name: 'Vyrobky',
+        name: 'Výrobky',
         defaultStockDecrementType: StockDecrementType.FIFO,
         inventoryTransactionTemplates: [
             {
-                description: 'Naskladneni vyrobku',
+                description: 'Naskladnění výrobků',
                 transactionType: InventoryTransactionType.Increment,
                 debitAccountCode: '123',
                 creditAccountCode: '583'
             },
             {
-                description: 'Vyskladneni vyrobku',
+                description: 'Vyskladnění výrobků',
                 transactionType: InventoryTransactionType.Decrement,
                 debitAccountCode: '123',
                 creditAccountCode: '583'
             },
             {
-                description: 'Inventurni prebytek',
+                description: 'Inventurní přebytek',
                 transactionType: InventoryTransactionType.Increment,
                 debitAccountCode: '123',
                 creditAccountCode: '648'
             },
             {
-                description: 'Inventurni manko',
+                description: 'Inventurní manko',
                 transactionType: InventoryTransactionType.Decrement,
                 debitAccountCode: '549',
                 creditAccountCode: '123'
@@ -126,29 +126,29 @@ export const defaultInventoryGroups: IDefaultInventoryGroupData[] = [
         ]
     },
     {
-        name: 'Zbozi',
+        name: 'Zboží',
         defaultStockDecrementType: StockDecrementType.FIFO,
         inventoryTransactionTemplates: [
             {
-                description: 'Naskladneni materialu',
+                description: 'Naskladnění zboží',
                 transactionType: InventoryTransactionType.Increment,
                 debitAccountCode: '132',
                 creditAccountCode: '321'
             },
             {
-                description: 'Spotreba materialu',
+                description: 'Vyskladnění zboží',
                 transactionType: InventoryTransactionType.Decrement,
                 debitAccountCode: '504',
                 creditAccountCode: '132'
             },
             {
-                description: 'Inventurni prebytek',
+                description: 'Inventurní přebytek',
                 transactionType: InventoryTransactionType.Increment,
                 debitAccountCode: '132',
                 creditAccountCode: '648'
             },
             {
-                description: 'Inventurni manko',
+                description: 'Inventurní manko',
                 transactionType: InventoryTransactionType.Decrement,
                 debitAccountCode: '549',
                 creditAccountCode: '132'

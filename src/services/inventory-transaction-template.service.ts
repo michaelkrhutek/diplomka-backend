@@ -9,6 +9,7 @@ import { IDefaultInventoryTransactionTemplateData } from "../default-data";
 import { IFinancialAccountDoc } from "../models/financial-account.model";
 import * as financialUnitService from './financial-unit.service';
 import * as inventoryGroupService from './inventory-group.service';
+import { InventoryTransactionModel } from "../models/inventory-transaction.model";
 
 
 export const getInventoryTransactionTemplatesWithPopulatedRefs = async (
@@ -90,22 +91,42 @@ export const createDefaultInventoryTransactionTemplates = async (
 
 
 
-export const deleteAllInventoryTransactionTemplates = async (financialUnitId: string): Promise<'OK'> => {
+export const deleteAllInventoryTransactionTemplates = async (financialUnitId: string): Promise<void> => {
     await InventoryTransactionTemplateModel.deleteMany({ financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při odstraňování šablon');            
         });
-    return 'OK';
 };
 
 
 
-export const deleteInventoryTransactionTemplates = async (id: string): Promise<'OK'> => {
+export const deleteInventoryTransactionTemplate = async (id: string): Promise<void> => {
     await InventoryTransactionTemplateModel.findByIdAndDelete(id).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při odstraňování šablony');            
         });
-    return 'OK';
 };
+
+
+
+export const deleteInventoryTransactionTemplatesWithFinancialAccount = async (financialAccountId: string): Promise<void> => {
+    await Promise.all([
+        InventoryTransactionTemplateModel.deleteMany({ debitAccount: financialAccountId }).exec(),
+        InventoryTransactionTemplateModel.deleteMany({ creditAccount: financialAccountId }).exec()
+    ]).catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při odstraňovaní šablon');
+    });
+}
+
+
+
+export const deleteInventoryTransactionTemplatesWithInventoryGroup = async (inventoryGroupId: string): Promise<void> => {
+    await InventoryTransactionTemplateModel.deleteMany({ inventoryGroup: inventoryGroupId }).exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při odstraňovaní šablon');
+        });
+}
