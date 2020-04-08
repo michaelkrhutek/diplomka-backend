@@ -4,6 +4,7 @@ import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 
 interface IUserBase {
     displayName: string;
+    displayNameLowerCased: string;
     username: string;
     password: string;
 }
@@ -19,6 +20,10 @@ export interface IUserPopulatedDoc extends IUserBase, IPopulatedReferences, Docu
 
 const UserSchema = new Schema<IUser>({
     displayName: {
+        type: String,
+        required: true
+    },
+    displayNameLowerCased: {
         type: String,
         required: true
     },

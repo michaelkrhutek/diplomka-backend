@@ -1,14 +1,19 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
+import { IUserDoc } from './user.model';
 
 interface IFinancialUnitBase {
     name: string;
 }
 
-interface IReferences {}
+interface IReferences {
+    users: IUserDoc['id'][]
+}
 
-interface IPopulatedReferences {}
+interface IPopulatedReferences {
+    users: IUserDoc[];
+}
 
 export interface INewFinancialUnit extends IFinancialUnitBase, IReferences {}
 export interface IFinancialUnit extends IFinancialUnitBase, IReferences, IPlainMongooseDoc {}
@@ -18,6 +23,10 @@ export interface IFinancialUnitPopulatedDoc extends IFinancialUnitBase, IPopulat
 const FinancialUnitSchema = new Schema<IFinancialUnit>({
     name: {
         type: String,
+        required: true
+    },
+    users: {
+        type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
         required: true
     }
 });

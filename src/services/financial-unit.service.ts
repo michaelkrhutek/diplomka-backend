@@ -1,4 +1,4 @@
-import { FinancialUnitModel, IFinancialUnitDoc, INewFinancialUnit } from '../models/financial-unit.model';
+import { FinancialUnitModel, IFinancialUnitDoc, INewFinancialUnit, IFinancialUnitPopulatedDoc } from '../models/financial-unit.model';
 import * as financialAccountService from './financial-account.service';
 import * as financialTransactionService from './financial-transaction.service';
 import * as inventoryGroupService  from './inventory-group.service';
@@ -9,11 +9,50 @@ import * as financialPeriodService from './financial-period.service';
 import * as utilitiesService from './utilities.service';
 import { IFinancialAccountDoc } from '../models/financial-account.model';
 import { defaultAccounts, defaultInventoryGroups } from '../default-data';
+import { Request } from 'express';
+import { IUser, IUserDoc } from '../models/user.model';
 
 
 
 export const getIsFinancialUnitExist = async (financialUnitId: string): Promise<boolean> => {
-    return await FinancialUnitModel.exists({ _id: financialUnitId });
+    return await FinancialUnitModel.exists({ _id: financialUnitId })
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při ověřování existence účetní jednotky');
+        });
+}
+
+
+
+export const getHasUserAccessToFinancialUnit = async (financialUnitId: string, userId: string): Promise<boolean> => {
+    return await FinancialUnitModel.exists({ _id: financialUnitId, users: userId })
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při ověřování práv uživatele k účetní jednotce');
+        });
+}
+
+
+
+export const testAccessToFinancialUnit = async (financialUnitId: string, req: Request): Promise<void> => {
+    const userId: string | null = req.session ? req.session.userId : null;
+    if (!(await getHasUserAccessToFinancialUnit(financialUnitId, userId as string))) {
+        throw new Error('Chybí uživatelská práva k účetní jednotce');
+    }
+}
+
+
+
+export const getFinancialUnitUsers = async (financialUnitId: string): Promise<IUserDoc[]> => {
+    const populatedFinancialUnit: IFinancialUnitPopulatedDoc | null = await FinancialUnitModel
+        .findById(financialUnitId)
+        .populate('users', '-username -password')
+        .exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání uživatelů účetní jednotky');
+        });
+    return populatedFinancialUnit ? populatedFinancialUnit.users : [];
 }
 
 
@@ -50,8 +89,10 @@ export const createFinancialUnit = async (data: INewFinancialUnit): Promise<IFin
 
 
 
-export const getAllFinancialUnits = async (): Promise<IFinancialUnitDoc[]> => {
-    const financialUnits: IFinancialUnitDoc[] = await FinancialUnitModel.find().exec()
+export const getAllFinancialUnits = async (userId: string): Promise<IFinancialUnitDoc[]> => {
+    const financialUnits: IFinancialUnitDoc[] = await FinancialUnitModel
+        .find({ users: userId })
+        .exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání účetních jednotek');
@@ -63,6 +104,20 @@ export const getAllFinancialUnits = async (): Promise<IFinancialUnitDoc[]> => {
 
 export const getFinancialUnit = async (financialUnitId: string): Promise<IFinancialUnitDoc | null> => {
     const financialUnit: IFinancialUnitDoc | null = await FinancialUnitModel.findById(financialUnitId).exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání účetní jednotky');
+        });
+    return financialUnit;
+}
+
+
+
+export const getFinancialUnitWithPopulatedRefs = async (financialUnitId: string): Promise<IFinancialUnitDoc | null> => {
+    const financialUnit: IFinancialUnitDoc | null = await FinancialUnitModel
+        .findById(financialUnitId)
+        .populate('users', '-username -password')
+        .exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání účetní jednotky');
@@ -102,3 +157,23 @@ export const deleteAllTransactions = async (financialUnitId: string): Promise<'O
     });
     return 'OK';
 };
+
+
+
+export const addUserToFinancialUnit = async (
+    financialUnitId: string,
+    userId: string
+): Promise<void> => {
+    if (await getHasUserAccessToFinancialUnit(financialUnitId, userId)) {
+        return;
+    }
+    await FinancialUnitModel.update(
+        { _id: financialUnitId }, 
+        { $push: { users: userId } },
+    )
+    .exec()
+    .catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při přidávání uživatelských práv k účetní jednotce');
+    });
+}

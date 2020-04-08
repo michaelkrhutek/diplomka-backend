@@ -14,6 +14,7 @@ import inventoryGroupRouter from './src/routes/inventory-group.route';
 import inventoryItemRouter from './src/routes/inventory-item.route';
 import inventoryTransactionTemplatesRouter from './src/routes/inventory-transaction-template.route';
 import inventoryTransactionRouter from './src/routes/inventory-transaction.route';
+import userRouter from './src/routes/user.route';
 import authRouter from './src/routes/auth.route';
 import * as fs from 'fs';
 import credentials from './src/credentials.json';
@@ -52,7 +53,10 @@ app.use(bodyParser.json());
 const MongoStore = connectMongo(session);
 app.use(session({
     secret: (credentials as ICredentials).cookieSecret,
-    store: new MongoStore({ mongooseConnection: mongoose.connection })
+    store: new MongoStore({ mongooseConnection: mongoose.connection }),
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 7
+    }
 }));
 
 app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -66,6 +70,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.url.startsWith('/api') && (!req.session || !req.session.userId)) {
         res.status(401).send();
     } else {
+        req.session && req.session.touch();
         next();
     }
 });
@@ -79,6 +84,7 @@ app.use('/api/inventory-group', inventoryGroupRouter);
 app.use('/api/inventory-item', inventoryItemRouter);
 app.use('/api/inventory-transaction-template', inventoryTransactionTemplatesRouter);
 app.use('/api/inventory-transaction', inventoryTransactionRouter);
+app.use('/api/user', userRouter);
 
 app.get('/', (_req: Request, res: Response, next: NextFunction) => {
     if (appMode == 'dev') {

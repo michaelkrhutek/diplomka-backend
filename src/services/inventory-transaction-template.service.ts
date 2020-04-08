@@ -92,7 +92,7 @@ export const createDefaultInventoryTransactionTemplates = async (
 
 
 export const deleteAllInventoryTransactionTemplates = async (financialUnitId: string): Promise<void> => {
-    await InventoryTransactionTemplateModel.deleteMany({ financialUnitId }).exec()
+    await InventoryTransactionTemplateModel.deleteMany({ financialUnit: financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při odstraňování šablon');            
