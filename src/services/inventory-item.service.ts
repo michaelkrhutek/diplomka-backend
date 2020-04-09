@@ -8,8 +8,16 @@ import { IInventoryItemStock } from '../models/inventory-item-stock.model';
 import { FinancialTransactionModel } from '../models/financial-transaction.model';
 
 
+
 export const getIsInventoryItemExist = async (inventoryItemId: string, financialUnitId: string): Promise<boolean> => {
     return await InventoryItemModel.exists({ _id: inventoryItemId, financialUnit: financialUnitId });
+
+}
+
+
+
+const getIsInventoryItemNameExist = async (name: string, financialUnitId: string): Promise<boolean> => {
+    return await InventoryItemModel.exists({ name, financialUnit: financialUnitId });
 }
 
 
@@ -19,6 +27,18 @@ export const getInventoryItemsWithPopulatedRefs = async (financialUnitId: string
         .find({ financialUnit: financialUnitId })
         .populate('inventoryGroup')
         .sort({ effectiveDate: -1 })
+        .exec().catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání skladových položek');
+        });
+    return inventoryItems;
+}
+
+
+
+export const getInventoryGroupInventoryItems = async (inventoryGroupId: string): Promise<IInventoryItemDoc[]> => {
+    const inventoryItems: IInventoryItemPopulatedDoc[] = await InventoryItemModel
+        .find({ inventoryGroup: inventoryGroupId })
         .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání skladových položek');
@@ -41,17 +61,45 @@ export const getInventoryItem = async (inventoryItemId: string): Promise<IInvent
 
 export const createInventoryItem = async (data: INewInventoryItem): Promise<IInventoryItemDoc> => {
     if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnit))) {
-        throw new Error('Ucetni jednotka s danym ID nenalezena');
+        throw new Error('Učetní jednotka nenalezena');
     }
     if (!(await inventoryGroupService.getIsInventoryGroupExist(data.inventoryGroup, data.financialUnit))) {
-        throw new Error('Skupina zasob s danym ID v dane ucetni jednotce nenalezena');
+        throw new Error('Skupina zásob nenalezena');
+    }
+    if (await getIsInventoryItemNameExist(data.name, data.financialUnit)) {
+        throw new Error('Název položky už existuje');
     }
     const inventoryItem: IInventoryItemDoc = await new InventoryItemModel(data).save()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při vytváření skladové položky');
+            throw new Error('Chyba při vytváření položky');
         });
     return inventoryItem;
+}
+
+
+
+export const updateInventoryItem = async (id: string, data: INewInventoryItem): Promise<void> => {
+    const originalInventoryItem: IInventoryItemDoc | null = await getInventoryItem(id);
+    if (!originalInventoryItem) {
+        throw new Error('Položka nenalezena');
+    }
+    if (data.name != originalInventoryItem?.name && await getIsInventoryItemNameExist(data.name, originalInventoryItem.financialUnit)) {
+        throw new Error('Název položky už existuje');
+    }
+    if (!(await inventoryGroupService.getIsInventoryGroupExist(data.inventoryGroup, originalInventoryItem.financialUnit))) {
+        throw new Error('Skupina zásob nenalezena');
+    }
+    await InventoryItemModel.findByIdAndUpdate(id, {
+        name: data.name,
+        inventoryGroup: data.inventoryGroup
+    }).exec().catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při úpravě položky');
+    });
+    if (originalInventoryItem.inventoryGroup != data.inventoryGroup) {
+        await inventoryTransactionService.recalculateInventoryTransactions(id);
+    };
 }
 
 
@@ -107,4 +155,11 @@ export const getAllInventoryItemsStocksTillDate = async (financialUnitId: string
         };
         return inventoryItemStock;
     });
+}
+
+
+
+export const getInventoryItemFinancialUnitId = async (inventoryItemId: string): Promise<string | null> => {
+    const inventoryItem: IInventoryItemDoc | null = await getInventoryItem(inventoryItemId);
+    return inventoryItem ? inventoryItem.financialUnit : null;
 }

@@ -9,7 +9,7 @@ router.get('/get-all-financial-accounts', (req: Request, res: Response) => {
         res.send(financialAccounts);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -21,9 +21,25 @@ router.post('/create-financial-account', (req: Request, res: Response) => {
         res.send(financialAccount);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
+
+
+
+router.post('/update-financial-account', async (req: Request, res: Response) => {
+    try {
+        const id: string = req.query.id;
+        const name: string = req.query.name;
+        const code: string = req.query.code;
+        await financialAccountService.updateFinancialAccount(id, { name, code, financialUnit: null });
+        res.send();
+    } catch(err) {
+        console.error(err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
 
 
 router.delete('/delete-all-financial-accounts', (req: Request, res: Response) => {
@@ -32,7 +48,7 @@ router.delete('/delete-all-financial-accounts', (req: Request, res: Response) =>
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -42,7 +58,7 @@ router.delete('/delete-financial-account', (req: Request, res: Response) => {
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 

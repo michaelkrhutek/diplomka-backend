@@ -116,12 +116,27 @@ export const getStockDecrementResult = (
 
 export const getStockIncrementResult = (
     currentStock: IStock,
-    newStockBatch: IStockBatch
+    newStockBatch: IStockBatch,
+    stockDecrementType: StockDecrementType
 ): IStockQuantityChangeResult => {
-    const batches: IStockBatch[] = [...currentStock.batches, newStockBatch];
+    let batches: IStockBatch[] = [...currentStock.batches, newStockBatch];
+    const totalStockQuantity: number = batches
+        .map(batch => batch.quantity)
+        .reduce((acc, val) => acc + val, 0);
+    const totalStockCost: number = batches
+        .map(batch => batch.costPerUnit * batch.quantity)
+        .reduce((acc, val) => acc + val, 0);
+    if (stockDecrementType == StockDecrementType.Average) {
+        batches = [{
+            quantity: totalStockQuantity,
+            costPerUnit: totalStockQuantity ? totalStockCost / totalStockQuantity : 0,
+            added: newStockBatch.added,
+            transactionIndex: newStockBatch.transactionIndex
+        }];
+    }
     const stock: IStock = {
-        totalStockQuantity: batches.map(batch => batch.quantity).reduce((acc, val) => acc + val, 0),
-        totalStockCost: batches.map(batch => batch.costPerUnit * batch.quantity).reduce((acc, val) => acc + val, 0),
+        totalStockQuantity,
+        totalStockCost,
         batches
     };
     return {

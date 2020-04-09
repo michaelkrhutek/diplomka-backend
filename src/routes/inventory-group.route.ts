@@ -12,7 +12,7 @@ router.get('/get-all-inventory-groups', (req: Request, res: Response) => {
         res.send(inventoryGroups);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -22,7 +22,7 @@ router.post('/create-inventory-group', (req: Request, res: Response) => {
         const financialUnitId: string = req.query.financialUnitId;
         const defaultStockDecrementType: StockDecrementType | null = parseStockDecrementType(req.query.defaultStockDecrementType);
         if (!defaultStockDecrementType) {
-            throw new Error('Neznama ocenovaci metoda pro vyskladneni');
+            throw new Error('Neznáma oceňovací metoda');
         }
         inventoryGroupService.createInventoryGroup(
             { name, financialUnit: financialUnitId, defaultStockDecrementType }
@@ -31,7 +31,23 @@ router.post('/create-inventory-group', (req: Request, res: Response) => {
         });
     } catch(err) {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.post('/update-inventory-group', async (req: Request, res: Response) => {
+    try {
+        const inventoryGroupId: string = req.query.id;
+        const name: string = req.query.name;
+        const defaultStockDecrementType: StockDecrementType | null = parseStockDecrementType(req.query.defaultStockDecrementType);
+        if (!defaultStockDecrementType) {
+            throw new Error('Neznáma oceňovací metoda');
+        }
+        await inventoryGroupService.updateInventoryGroup(inventoryGroupId, { name, financialUnit: null, defaultStockDecrementType });
+        res.send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -41,7 +57,7 @@ router.delete('/delete-all-inventory-groups', (req: Request, res: Response) => {
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -51,7 +67,7 @@ router.delete('/delete-inventory-group', (req: Request, res: Response) => {
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 

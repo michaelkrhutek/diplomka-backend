@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import * as inventoryItemService from '../services/inventory-item.service';
 import * as utilitilesService from '../services/utilities.service'
 
@@ -10,7 +10,7 @@ router.get('/get-all-inventory-items', (req: Request, res: Response) => {
         res.send(inventoryItems);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -21,22 +21,38 @@ router.get('/get-inventory-items-with-stock', (req: Request, res: Response) => {
         res.send(inventoryItems);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
-router.post('/create-inventory-item', (req: Request, res: Response) => {
-    const name: string = req.query.name;
-    const financialUnitId: string = req.query.financialUnitId;
-    const inventoryGroupId: string = req.query.inventoryGroupId;
-    inventoryItemService.createInventoryItem(
-        { name, financialUnit: financialUnitId, inventoryGroup: inventoryGroupId }
-    ).then((inventoryItem) => {
+router.post('/create-inventory-item', async (req: Request, res: Response) => {
+    try {
+        const name: string = req.query.name;
+        const financialUnitId: string = req.query.financialUnitId;
+        const inventoryGroupId: string = req.query.inventoryGroupId;
+        const inventoryItem = await inventoryItemService.createInventoryItem(
+            { name, financialUnit: financialUnitId, inventoryGroup: inventoryGroupId }
+        );
         res.json(inventoryItem);
-    }).catch((err) => {
+    } catch(err) {
         console.error(err);
-        res.status(500).json(err);
-    });
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.post('/update-inventory-item', async (req: Request, res: Response) => {
+    try {
+        const id: string = req.query.id;
+        const name: string = req.query.name;
+        const inventoryGroupId: string = req.query.inventoryGroupId;
+        await inventoryItemService.updateInventoryItem(
+            id, { name, financialUnit: null, inventoryGroup: inventoryGroupId }
+        );
+        res.send();
+    } catch(err) {
+        console.error(err);
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.delete('/delete-all-inventory-items', (req: Request, res: Response) => {
@@ -45,7 +61,7 @@ router.delete('/delete-all-inventory-items', (req: Request, res: Response) => {
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -55,7 +71,7 @@ router.delete('/delete-inventory-item', (req: Request, res: Response) => {
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 

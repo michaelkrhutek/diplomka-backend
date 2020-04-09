@@ -1,10 +1,11 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
-import { IStock } from './stock.model';
+import { IStock, StockDecrementType } from './stock.model';
 import { IInventoryItemDoc } from './inventory-item.model';
 import { IFinancialUnitDoc } from './financial-unit.model';
 import { IFinancialAccountDoc } from './financial-account.model';
+import { IUser, IUserDoc } from './user.model';
 
 export enum InventoryTransactionType {
     Increment = 'increment',
@@ -38,9 +39,11 @@ interface IInventoryTransactionBase<SpecificData> {
     totalTransactionAmount: number;
     stockBeforeTransaction: IStock;
     stockAfterTransaction: IStock;
+    stockDecrementTypeApplied: StockDecrementType;
     inventoryItemTransactionIndex: number;
     isDerivedTransaction: boolean;
     isActive: boolean;
+    created: Date;
 }
 
 interface IReferences {
@@ -49,6 +52,7 @@ interface IReferences {
     debitAccount: IFinancialAccountDoc['_id'];
     creditAccount: IFinancialAccountDoc['_id'];
     transactionForcingDerivation: IInventoryTransactionDoc<any>['_id'] | null;
+    creator: IUserDoc['_id'];
 }
 
 interface IPopulatedReferences {
@@ -57,6 +61,7 @@ interface IPopulatedReferences {
     debitAccount: IFinancialAccountDoc;
     creditAccount: IFinancialAccountDoc;
     transactionForcingDerivation: IInventoryTransactionDoc<any>['_id'] | null;
+    creator: IUserDoc;
 }
 
 export interface INewInventoryTransaction<SpecificData> extends IInventoryTransactionBase<SpecificData>, IReferences {}
@@ -139,6 +144,10 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         },
         required: true
     },
+    stockDecrementTypeApplied: {
+        type: StockDecrementType,
+        required: true
+    },
     isDerivedTransaction: {
         type: Boolean,
         required: true,        
@@ -152,6 +161,15 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         type: Boolean,
         required: true
     },
+    created: {
+        type: Date,
+        required: true
+    },
+    creator: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    }
 });
 
 export const InventoryTransactionModel = mongoose.model<IInventoryTransactionDoc<any>>(

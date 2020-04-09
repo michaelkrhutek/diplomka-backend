@@ -14,6 +14,37 @@ export const getIsFinancialAccountExist = async (financialAccountId: string, fin
 
 
 
+const getIsFinancialAccountCodeExist = async (financialUnitId: string, code: string): Promise<boolean> => {
+    return await FinancialAccountModel.exists({ code, financialUnit: financialUnitId });
+}
+
+
+
+export const getAllFinancialAccounts = async (financialUnitId: string): Promise<IFinancialAccountDoc[]> => {
+    const financialAccounts: IFinancialAccountDoc[] = await FinancialAccountModel
+        .find({ financialUnit: financialUnitId })
+        .sort({ code: 1 })
+        .exec().catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání finančních účtů');
+        });
+    return financialAccounts;
+}
+
+
+
+export const getFinancialAccount = async (id: string): Promise<IFinancialAccountDoc | null> => {
+    const financialAccount: IFinancialAccountDoc | null = await FinancialAccountModel
+        .findById(id)
+        .exec().catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání finančního účtu');
+        });
+    return financialAccount;
+}
+
+
+
 export const createDefaultFinancialAccounts = async (
     financialUnitId: string,
     rawData: IDefaultFinancialAccountData[]
@@ -34,7 +65,10 @@ export const createDefaultFinancialAccounts = async (
 
 export const createFinancialAccount = async (data: INewFinancialAccount): Promise<IFinancialAccountDoc> => {
     if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnit))) {
-        throw new Error('Ucetni jednotka s danym ID neexistuje');
+        throw new Error('Účetní jednotka nenalezena');
+    }
+    if (await getIsFinancialAccountCodeExist(data.financialUnit, data.code)) {
+        throw new Error('Kód už existuje');
     }
     const financialAccount: IFinancialAccountDoc = await new FinancialAccountModel(data).save()
         .catch((err) => {
@@ -46,15 +80,21 @@ export const createFinancialAccount = async (data: INewFinancialAccount): Promis
 
 
 
-export const getAllFinancialAccounts = async (financialUnitId: string): Promise<IFinancialAccountDoc[]> => {
-    const financialAccounts: IFinancialAccountDoc[] = await FinancialAccountModel
-        .find({ financialUnit: financialUnitId })
-        .sort({ code: 1 })
-        .exec().catch((err) => {
-            console.error(err);
-            throw new Error('Chyba při načítání finančních účtů');
-        });
-    return financialAccounts;
+export const updateFinancialAccount = async (id: string, data: INewFinancialAccount): Promise<void> => {
+    const originalFinancialAccount: IFinancialAccountDoc | null = await getFinancialAccount(id);
+    if (!originalFinancialAccount) {
+        throw new Error('Účet nenalezen');
+    }
+    if (data.code != originalFinancialAccount.code && await getIsFinancialAccountCodeExist(data.code, originalFinancialAccount.financialUnit)) {
+        throw new Error('Kód už existuje');
+    }
+    await FinancialAccountModel.findByIdAndUpdate(id, {
+        code: data.code,
+        name: data.name
+    }).exec().catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při úpravě účtu');
+    });
 }
 
 

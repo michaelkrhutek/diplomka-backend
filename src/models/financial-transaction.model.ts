@@ -4,6 +4,7 @@ import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 import { IInventoryItemDoc } from './inventory-item.model';
 import { IFinancialAccountDoc } from './financial-account.model';
 import { IFinancialUnitDoc } from './financial-unit.model';
+import { IUserDoc } from './user.model';
 
 interface IFinancialTransactionBase {
     effectiveDate: Date;
@@ -13,6 +14,7 @@ interface IFinancialTransactionBase {
     isDerivedTransaction: boolean;
     inventoryTransactionForcingDerivation: string | null;
     isActive?: boolean;
+    created: Date;
 }
 
 interface IReferences {
@@ -20,6 +22,7 @@ interface IReferences {
     inventoryItem: IInventoryItemDoc['_id'];
     debitAccount: IFinancialAccountDoc['_id'];
     creditAccount: IFinancialAccountDoc['_id'];
+    creator: IUserDoc['_id'];
 }
 
 interface IPopulatedReferences {
@@ -27,6 +30,7 @@ interface IPopulatedReferences {
     inventroryItem: IInventoryItemDoc,
     debitAccount: IFinancialAccountDoc;
     creditAccount: IFinancialAccountDoc;
+    creator: IUserDoc;
 }
 
 export interface INewFinancialTransaction extends IFinancialTransactionBase, IReferences {}
@@ -85,6 +89,15 @@ const FinancialTransactionSchema = new Schema<IFinancialTransaction>({
         type: Boolean,
         default: false,
     },
+    created: {
+        type: Date,
+        required: true
+    },
+    creator: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    }
 });
 
 export const FinancialTransactionModel = mongoose.model<IFinancialTransactionDoc>(

@@ -8,11 +8,13 @@ interface IFinancialUnitBase {
 }
 
 interface IReferences {
-    users: IUserDoc['id'][]
+    users: IUserDoc['id'][],
+    owner: IUserDoc['id']
 }
 
 interface IPopulatedReferences {
     users: IUserDoc[];
+    owner: IUserDoc;
 }
 
 export interface INewFinancialUnit extends IFinancialUnitBase, IReferences {}
@@ -27,6 +29,11 @@ const FinancialUnitSchema = new Schema<IFinancialUnit>({
     },
     users: {
         type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+        required: true
+    },
+    owner: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
         required: true
     }
 });

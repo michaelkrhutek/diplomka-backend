@@ -6,12 +6,18 @@ import * as inventoryItemService from './inventory-item.service';
 import * as inventoryTransactionService from './inventory-transaction.service';
 import { IDefaultInventoryGroupData } from "../default-data";
 import { IFinancialAccountDoc } from "../models/financial-account.model";
-import { InventoryItemModel } from "../models/inventory-item.model";
+import { InventoryItemModel, IInventoryItemDoc } from "../models/inventory-item.model";
 
 
 
 export const getIsInventoryGroupExist = async (inventoryGroupId: string, financialUnitId: string): Promise<boolean> => {
     return await InventoryGroupModel.exists({ _id: inventoryGroupId, financialUnit: financialUnitId });
+}
+
+
+
+const getIsInventoryGroupNameExist = async (name: string, financialUnitId: string): Promise<boolean> => {
+    return await InventoryGroupModel.exists({ name, financialUnit: financialUnitId });
 }
 
 
@@ -66,14 +72,49 @@ export const createDefaultInventoryGroups = async (
 
 export const createInventoryGroup = async (data: INewInventoryGroup): Promise<IInventoryGroupDoc> => {
     if (!(await financialUnitService.getIsFinancialUnitExist(data.financialUnit))) {
-        throw new Error('Ucetni jednotka s danym ID neexistuje');
+        throw new Error('Účetní jednotka nenalezena');
+    }
+    if (await getIsInventoryGroupNameExist(data.name, data.financialUnit)) {
+        throw new Error('Název skupiny už existuje');
     }
     const inventoryGroup: IInventoryGroupDoc = await new InventoryGroupModel(data).save()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při vytváření skladové položky');
+            throw new Error('Chyba při vytváření skupiny');
         });
     return inventoryGroup;
+}
+
+
+
+export const updateInventoryGroup = async (id: string, data: INewInventoryGroup): Promise<void> => {
+    const originalInventoryGroup: IInventoryGroupDoc | null = await getInventoryGroup(id);
+    if (!originalInventoryGroup) {
+        throw new Error('Skupina nenalezena');
+    }
+    if (data.name != originalInventoryGroup?.name && await getIsInventoryGroupNameExist(data.name, originalInventoryGroup.financialUnit)) {
+        throw new Error('Název skupiny už existuje');
+    }
+    await InventoryGroupModel.findByIdAndUpdate(id, {
+        name: data.name,
+        defaultStockDecrementType: data.defaultStockDecrementType
+    }).exec().catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při úpravě skupiny');
+    });
+    if (data.defaultStockDecrementType != originalInventoryGroup.defaultStockDecrementType) {
+        const inventoryItems: IInventoryItemDoc[] = await inventoryItemService.getInventoryGroupInventoryItems(id);
+        const promises: Promise<any>[] = inventoryItems.map((item) => {
+            return inventoryTransactionService.recalculateInventoryTransactions(item.id).catch((err) => {
+                console.error(err);
+                return null;
+            });
+        });
+        await Promise.all(promises).catch((err) => {
+            console.error(err);
+            return null;
+        });
+    }
 }
 
 
@@ -112,4 +153,4 @@ export const getInventoryGroupStockDecrementType = async (inventoryGroupId: stri
         .findById(inventoryGroupId)
         .select({ defaultStockDecrementType: 1 });
     return inventoryGroup ? inventoryGroup.defaultStockDecrementType : null;
-} 
+}

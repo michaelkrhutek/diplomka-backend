@@ -11,7 +11,7 @@ router.get('/get-all-financial-transactions', (req: Request, res: Response) => {
         res.send(financialTransactions);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -26,7 +26,7 @@ router.get('/get-filtred-financial-transactions', (req: Request, res: Response) 
         res.send(financialTransactions);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -40,7 +40,7 @@ router.get('/get-trial-balance', (req: Request, res: Response) => {
         })
         .catch((err) => {
             console.error(err);
-            res.status(500).json(err);
+            res.status(500).json({ message: err.message });
         });
 })
 
@@ -50,7 +50,7 @@ router.get('/get-financial-period-trial-balance', (req: Request, res: Response) 
         res.send(trialBalance);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 })
 export default router;

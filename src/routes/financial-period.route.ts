@@ -9,7 +9,7 @@ router.get('/get-all-financial-periods', (req: Request, res: Response) => {
         res.send(financialPeriods);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -22,7 +22,7 @@ router.post('/create-financial-period', (req: Request, res: Response) => {
         res.send(financialPeriod);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -32,7 +32,7 @@ router.delete('/delete-all-financial-periods', (req: Request, res: Response) => 
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -42,7 +42,7 @@ router.delete('/delete-last-financial-period', (req: Request, res: Response) => 
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 

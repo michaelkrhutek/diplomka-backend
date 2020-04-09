@@ -9,7 +9,7 @@ router.get('/get-all-financial-units', (req: Request, res: Response) => {
         res.send(financialUnits);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -21,56 +21,69 @@ router.get('/get-financial-unit', async (req: Request, res: Response) => {
         res.send(financialUnit);
     } catch(err) {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     }
 });
 
-router.post('/create-financial-unit', (req: Request, res: Response) => {
-    const name: string = req.query.name;
-    const creatorId: string | null = req.session ? req.session.userId : null;
-    financialUnitService.createFinancialUnit({ name, users: [creatorId as string] }).then((financialUnit) => {
+router.post('/create-financial-unit', async (req: Request, res: Response) => {
+    try {
+        const name: string = req.query.name;
+        const creatorId: string | null = req.session ? req.session.userId : null;
+        const financialUnit = await financialUnitService.createFinancialUnit({ name, users: [creatorId as string], owner: creatorId });
         res.send(financialUnit);
-    }).catch((err) => {
+    } catch(err) {
         console.error(err);
-        res.status(500).json(err);
-    });
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.post('/add-user', async (req: Request, res: Response) => {
     try {
         const financialUnitId: string = req.query.financialUnitId;
         const newUserId: string = req.query.userId;
-        await financialUnitService.testAccessToFinancialUnit(financialUnitId, req);
-        financialUnitService.addUserToFinancialUnit(financialUnitId, newUserId).then((financialUnit) => {
-            res.send(financialUnit);
-        })
+        await financialUnitService.testOwnershipToFinancialUnit(financialUnitId, req);
+        await financialUnitService.addUserToFinancialUnit(financialUnitId, newUserId);
+        res.send();
     } catch (err) {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.post('/remove-user', async (req: Request, res: Response) => {
+    try {
+        const financialUnitId: string = req.query.financialUnitId;
+        const newUserId: string = req.query.userId;
+        await financialUnitService.testOwnershipToFinancialUnit(financialUnitId, req);
+        await financialUnitService.removeUserToFinancialUnit(financialUnitId, newUserId);
+        res.send();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: err.message });
     }
 });
 
 router.delete('/delete-financial-unit', async (req: Request, res: Response) => {
     try {
         const financialUnitId: string = req.query.id;
-        await financialUnitService.testAccessToFinancialUnit(financialUnitId, req);
+        await financialUnitService.testOwnershipToFinancialUnit(financialUnitId, req);
         await financialUnitService.deleteFinancialUnit(financialUnitId);
         res.send({ message: 'Deleted' });
     } catch (err) {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     }
 });
 
 router.delete('/delete-all-transactions', async (req: Request, res: Response) => {
     try {
-        const financialUnitId: string = req.query.id;
+        const financialUnitId: string = req.query.financialUnitId;
         await financialUnitService.testAccessToFinancialUnit(financialUnitId, req);
         await financialUnitService.deleteAllTransactions(financialUnitId);
         res.send({ message: 'OK' });
     } catch (err) {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     }
 });
 

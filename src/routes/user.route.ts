@@ -10,7 +10,7 @@ router.get('/search-users', (req: Request, res: Response) => {
         res.send(users);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -22,7 +22,7 @@ router.get('/get-financial-unit-users', async (req: Request, res: Response) => {
         res.send(users);
     } catch(err) {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     }
 });
 

@@ -99,11 +99,13 @@ export const getFiltredFinancialTransaction = async (
     const financialTransactions: IFinancialTransactionDoc[] = await FinancialTransactionModel
         .find({
             financialUnit: financialUnitId,
-            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date }
+            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date },
+            isActive: true
         })
         .or(accountId ? [{ debitAccount: accountId }, { creditAccount: accountId }] : [{_id: { $exists: true }}])
         .populate('debitAccount')
         .populate('creditAccount')
+        .populate('creator', '-username -password')
         .sort({ effectiveDate: 1 })
         .exec().catch((err) => {
             console.error(err);

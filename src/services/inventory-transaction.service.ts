@@ -21,6 +21,52 @@ import { Error } from "mongoose";
 
 
 
+let lockedInventoryItemIds: string[] = [];
+
+
+
+const getIsInventoryItemAvailable = (inventoryItemId: string): boolean => {
+    console.log(inventoryItemId, lockedInventoryItemIds);
+    return !lockedInventoryItemIds.includes(inventoryItemId);
+}
+
+
+
+const lockInventoryItem = (inventoryItemId: string): void => {
+    lockedInventoryItemIds = [...lockedInventoryItemIds, inventoryItemId];
+    console.log(lockedInventoryItemIds);
+}
+
+
+
+const unlockInventoryItem = (inventoryItemId: string): void => {
+    lockedInventoryItemIds = lockedInventoryItemIds.filter(id => id != inventoryItemId);
+    console.log(inventoryItemId, lockedInventoryItemIds);
+}
+
+
+
+const verifyInventoryItemAvailability = async (
+    inventoryItemId: string,
+    iterationCount: number = 0
+): Promise<void> => {
+    if (iterationCount >= 10) {
+        throw new Error('Položka je nedostupná');
+    }
+    const isAvailable: boolean = await new Promise((resolve) => {
+        const isAvailable: boolean = getIsInventoryItemAvailable(inventoryItemId);
+        isAvailable && resolve(true);
+        setTimeout(() => resolve(false), 2000);
+    });
+    if (isAvailable) {
+        return;
+    } else {
+        await verifyInventoryItemAvailability(inventoryItemId, iterationCount + 1)
+    }
+} 
+
+
+
 export const getLastInventoryTransactionTillEffectiveDate = async (
     inventoryItemId: string,
     effectiveDate: Date
@@ -84,7 +130,7 @@ const getPreviousInventoryTransaction = async (
 
 const getFirstInventoryTransactionWithIndexGreaterThanOrEqual = async (
     inventoryItemId: string, transactionIndex: number
-): Promise<IInventoryTransactionDoc<any> | any> => {
+): Promise<IInventoryTransactionDoc<any> | null> => {
     const inventoryTransaction: IInventoryTransactionDoc<any> | null = await InventoryTransactionModel
         .findOne({
             inventoryItem: inventoryItemId,
@@ -134,6 +180,8 @@ const insertInventoryTransactionToDb = async <SpecificData>(
 
 
 const createIncrementInventoryTransaction = async (
+    creatorId: string,
+    created: Date,
     requestData: INewInventoryTransactionRequestData<IIncrementInventoryTransactionSpecificData>,
     previousInventoryTransaction: IInventoryTransactionDoc<any> | null,
     transactionIdForcingDerivation: string | null = null
@@ -164,7 +212,9 @@ const createIncrementInventoryTransaction = async (
         added: new Date(effectiveDate),
         transactionIndex: inventoryItemTransactionIndex
     };
-    const stock: IStock = stockService.getStockIncrementResult(currentStock, newStockBatch).stock;
+    const stock: IStock = stockService.getStockIncrementResult(
+        currentStock, newStockBatch, stockDecrementType
+    ).stock;
     const totalTransactionAmount: number = utilitiesService.getRoundedNumber(
         requestData.specificData.quantity * requestData.specificData.costPerUnit, 2
     );
@@ -181,9 +231,12 @@ const createIncrementInventoryTransaction = async (
         specificData: requestData.specificData,
         stockBeforeTransaction: currentStock,
         stockAfterTransaction: stock,
+        stockDecrementTypeApplied: stockDecrementType,
         isDerivedTransaction: !!transactionIdForcingDerivation,
         transactionForcingDerivation: transactionIdForcingDerivation,
-        isActive: false
+        isActive: false,
+        created,
+        creator: creatorId
     };
     const inventoryTransaction: IInventoryTransactionDoc<IIncrementInventoryTransactionSpecificData> = await insertInventoryTransactionToDb(newTransactionData);
     const newFinancialTransactionData: INewFinancialTransaction = {
@@ -196,7 +249,9 @@ const createIncrementInventoryTransaction = async (
         amount: totalTransactionAmount,
         inventoryItemTransactionIndex,
         isDerivedTransaction: !!transactionIdForcingDerivation,
-        inventoryTransactionForcingDerivation: transactionIdForcingDerivation
+        inventoryTransactionForcingDerivation: transactionIdForcingDerivation,
+        created,
+        creator: creatorId
     };
     await financialTransactionService.createInactiveFinancialTransaction(newFinancialTransactionData);
     return inventoryTransaction;
@@ -205,6 +260,8 @@ const createIncrementInventoryTransaction = async (
 
 
 const createDecrementInventoryTransaction = async (
+    creatorId: string,
+    created: Date,
     requestData: INewInventoryTransactionRequestData<IDecrementInventoryTransactionSpecificData>,
     previousInventoryTransaction: IInventoryTransactionDoc<any> | null,
     transactionIdForcingDerivation: string | null = null
@@ -245,9 +302,12 @@ const createDecrementInventoryTransaction = async (
         specificData: requestData.specificData,
         stockBeforeTransaction: currentStock,
         stockAfterTransaction: stockDecrementResult.stock,
+        stockDecrementTypeApplied: stockDecrementType,
         isDerivedTransaction: !!transactionIdForcingDerivation,
         transactionForcingDerivation: transactionIdForcingDerivation,
-        isActive: false
+        isActive: false,
+        created,
+        creator: creatorId
     };
     const inventoryTransaction: IInventoryTransactionDoc<any> = await insertInventoryTransactionToDb(newInventoryTransactionData);
     const newFinancialTransactionData: INewFinancialTransaction = {
@@ -260,7 +320,9 @@ const createDecrementInventoryTransaction = async (
         amount: stockDecrementResult.changeCost,
         inventoryItemTransactionIndex,
         isDerivedTransaction: !!transactionIdForcingDerivation,
-        inventoryTransactionForcingDerivation: transactionIdForcingDerivation
+        inventoryTransactionForcingDerivation: transactionIdForcingDerivation,
+        created,
+        creator: creatorId
     };
     await financialTransactionService.createInactiveFinancialTransaction(newFinancialTransactionData);
     return inventoryTransaction;
@@ -269,6 +331,8 @@ const createDecrementInventoryTransaction = async (
 
 
 const createInactiveInventoryTransaction = async (
+    creatorId: string,
+    created: Date,
     type: InventoryTransactionType,
     requestData: INewInventoryTransactionRequestData<any>,
     previousTransaction: IInventoryTransactionDoc<any> | null,
@@ -277,12 +341,16 @@ const createInactiveInventoryTransaction = async (
     switch (type) {
         case InventoryTransactionType.Increment:
             return await createIncrementInventoryTransaction(
+                creatorId,
+                created,
                 requestData as INewInventoryTransactionRequestData<IIncrementInventoryTransactionSpecificData>,
                 previousTransaction,
                 transactionIdForcingDerivation
             );
         case InventoryTransactionType.Decrement:
             return await createDecrementInventoryTransaction(
+                creatorId,
+                created,
                 requestData as INewInventoryTransactionRequestData<IDecrementInventoryTransactionSpecificData>,
                 previousTransaction,
                 transactionIdForcingDerivation
@@ -351,20 +419,22 @@ const deleteInactiveInventoryTransaction = async (
 
 
 const deriveSubsequentInventoryTransactions = async (
-    currentInventoryTransaction: IInventoryTransactionDoc<any>,
+    inventoryItemId: string,
+    currentInventoryTransaction: IInventoryTransactionDoc<any> | null,
+    subsequentTransactionIndex: number,
     inventoryTransactionIdForcingDerivation: string,
     currentIteration: number,
     iterationLimit: number
-): Promise<'OK'> => {
+): Promise<void> => {
     if (currentIteration > iterationLimit) {
         throw new Error('Limit iteraci pro upravu naslednych transakci prekrocen');
         ;
     }
     const subsequentInventoryTransaction: IInventoryTransactionDoc<any> | null = await getFirstInventoryTransactionWithIndexGreaterThanOrEqual(
-        currentInventoryTransaction.inventoryItem, currentInventoryTransaction.inventoryItemTransactionIndex
+        inventoryItemId, currentInventoryTransaction ? subsequentTransactionIndex : 0
     );
     if (!subsequentInventoryTransaction) {
-        return 'OK';
+        return;
     }
     const requestData: INewInventoryTransactionRequestData<any> = {
         inventoryItemId: subsequentInventoryTransaction.inventoryItem,
@@ -375,13 +445,17 @@ const deriveSubsequentInventoryTransactions = async (
         specificData: subsequentInventoryTransaction.specificData
     };
     const derivedSubsequentInventoryTransaction: IInventoryTransactionDoc<any> = await createInactiveInventoryTransaction(
+        subsequentInventoryTransaction.creator,
+        subsequentInventoryTransaction.created,
         subsequentInventoryTransaction.type,
         requestData,
         currentInventoryTransaction,
         inventoryTransactionIdForcingDerivation
     );
     return await deriveSubsequentInventoryTransactions(
+        inventoryItemId,
         derivedSubsequentInventoryTransaction,
+        derivedSubsequentInventoryTransaction.inventoryItemTransactionIndex + 1,
         inventoryTransactionIdForcingDerivation,
         currentIteration + 1,
         iterationLimit
@@ -417,6 +491,8 @@ const deriveSubsequentInventoryTransactionsDuringDelete = async (
         specificData: subsequentInventoryTransaction.specificData
     };
     const derivedSubsequentInventoryTransaction: IInventoryTransactionDoc<any> = await createInactiveInventoryTransaction(
+        subsequentInventoryTransaction.creator,
+        subsequentInventoryTransaction.created,
         subsequentInventoryTransaction.type,
         requestData,
         currentInventoryTransaction,
@@ -435,23 +511,30 @@ const deriveSubsequentInventoryTransactionsDuringDelete = async (
 
 
 export const createInventoryTransaction = async (
+    creatorId: string,
     type: InventoryTransactionType,
     requestData: INewInventoryTransactionRequestData<any>,
 ): Promise<IInventoryTransactionDoc<any>> => {
+    // Locking inventory item to prevent other transaction
+    await verifyInventoryItemAvailability(requestData.inventoryItemId);
+    lockInventoryItem(requestData.inventoryItemId);
+    // Creating transaction
     const previousInventoryTransaction: IInventoryTransactionDoc<any> | null = await getPreviousInventoryTransaction(
         requestData.inventoryItemId, requestData.effectiveDate, requestData.addBeforeTransactionWithIndex || null
     );
     const newInventoryTransaction: IInventoryTransactionDoc<any> = await createInactiveInventoryTransaction(
-        type, requestData, previousInventoryTransaction, null
+        creatorId, new Date(), type, requestData, previousInventoryTransaction, null
     ).catch((err) => {
         console.error(err);
+        unlockInventoryItem(requestData.inventoryItemId);
         throw new Error('Chyba pri vytvareni nove transakce');
     });
     await deriveSubsequentInventoryTransactions(
-        newInventoryTransaction, newInventoryTransaction.id, 1, 10
+        requestData.inventoryItemId, newInventoryTransaction, newInventoryTransaction.inventoryItemTransactionIndex, newInventoryTransaction.id, 1, 50
     ).catch((err) => {
         console.error(err);
         deleteInactiveInventoryTransaction(newInventoryTransaction.id);
+        unlockInventoryItem(requestData.inventoryItemId);
         throw new Error('Chyba pri prepocitavani naslednych transakci');
     })
     await deleteActiveInventoryTransactionsWithIndexEqualOrLarger(
@@ -460,9 +543,12 @@ export const createInventoryTransaction = async (
     ).catch((err) => {
         console.error(err);
         deleteInactiveInventoryTransaction(newInventoryTransaction.id);
+        unlockInventoryItem(requestData.inventoryItemId);
         throw new Error('Chyba pri odstranovani puvodnich naslednych transakci');
     });
     await activateCreatedInventoryTransactions(newInventoryTransaction.id);
+    // Unlocking inventory item
+    unlockInventoryItem(requestData.inventoryItemId);
     return newInventoryTransaction;
 }
 
@@ -491,9 +577,11 @@ export const getFiltredInventoryTransactions = async (
             financialUnit: financialUnitId,
             inventoryItem:  inventoryItemId || { $exists: true },
             type: transactionType || { $exists: true },
-            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date }
+            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date },
+            isActive: true
         })
         .populate('inventoryItem')
+        .populate('creator', '-username -password')
         .sort({ effectiveDate: 1 })
         .exec().catch((err) => {
             console.error(err);
@@ -508,6 +596,7 @@ export const getPopulatedInventoryTransactions = async (financialUnit: string): 
     const inventoryTransactions: IInventoryTransactionPopulatedDoc<any>[] = await InventoryTransactionModel
         .find({ financialUnit })
         .populate('inventoryItem')
+        .populate('creator', '-username -password')
         .sort({ effectiveDate: 1 })
         .exec().catch((err) => {
             console.error(err);
@@ -532,6 +621,10 @@ export const deleteInventoryTransaction = async (inventoryTransactionId: string)
         return;
     }
     const inventoryItemId: string = transactionToDelete.inventoryItem;
+    // Locking inventory item to prevent other transaction
+    await verifyInventoryItemAvailability(inventoryItemId);
+    lockInventoryItem(inventoryItemId);
+    // Deleting a transaction
     const previousTransaction: IInventoryTransactionDoc<any> | null = await getLastInventoryTransactionWithIndexLowerThanOrEqual(
         inventoryItemId, transactionToDelete.inventoryItemTransactionIndex - 1
     );
@@ -540,6 +633,7 @@ export const deleteInventoryTransaction = async (inventoryTransactionId: string)
     ).catch((err) => {
         console.error(err);
         deleteInactiveInventoryTransaction(transactionToDelete.id);
+        unlockInventoryItem(inventoryItemId);
         throw new Error('Chyba pri prepocitavani naslednych transakci');
     });
     await deleteActiveInventoryTransactionsWithIndexEqualOrLarger(
@@ -547,9 +641,12 @@ export const deleteInventoryTransaction = async (inventoryTransactionId: string)
     ).catch((err) => {
         console.error(err);
         deleteInactiveInventoryTransaction(transactionToDelete.id);
+        unlockInventoryItem(inventoryItemId);
         throw new Error('Chyba pri odstranovani puvodnich naslednych transakci');
     });
     await activateCreatedInventoryTransactions(transactionToDelete.id);
+    // Unlocking inventory item
+    unlockInventoryItem(inventoryItemId);
 }
 
 
@@ -573,4 +670,37 @@ export const deleteInventoryTransactionAllFinancialTransactions = async (invento
             throw new Error('Chyba při odstraňování účetních zápisů');
         });
     return 'OK';
+}
+
+
+
+export const recalculateInventoryTransactions = async (inventoryItemId: string): Promise<void> => {
+    // Locking inventory item to prevent other transaction
+    await verifyInventoryItemAvailability(inventoryItemId);
+    lockInventoryItem(inventoryItemId);
+    // Recalculating transactions
+    await deriveSubsequentInventoryTransactions(inventoryItemId, null, 1, inventoryItemId, 1, 100)
+        .catch((err) => {
+            console.error(err);
+            deleteInactiveInventoryTransaction(inventoryItemId);
+            unlockInventoryItem(inventoryItemId);
+            throw new Error('Chyba při přepočítávání transakcí');
+        });
+    await deleteActiveInventoryTransactionsWithIndexEqualOrLarger(inventoryItemId, 1)
+        .catch((err) => {
+            console.error(err);
+            deleteInactiveInventoryTransaction(inventoryItemId);
+            unlockInventoryItem(inventoryItemId);
+            throw new Error('Chyba při přepočítávání transakcí');
+        });
+    await activateCreatedInventoryTransactions(inventoryItemId);
+    // Unlocking inventory item
+    unlockInventoryItem(inventoryItemId);
+}
+
+
+
+export const getInventoryTransactionFinancialUnitId = async (inventoryTransactionId: string): Promise<string | null> => {
+    const inventoryTransaction: IInventoryTransactionDoc<any> | null = await getInventoryTransaction(inventoryTransactionId);
+    return inventoryTransaction ? inventoryTransaction.financialUnit : null;
 }

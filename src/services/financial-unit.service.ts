@@ -10,7 +10,7 @@ import * as utilitiesService from './utilities.service';
 import { IFinancialAccountDoc } from '../models/financial-account.model';
 import { defaultAccounts, defaultInventoryGroups } from '../default-data';
 import { Request } from 'express';
-import { IUser, IUserDoc } from '../models/user.model';
+import { IUserDoc } from '../models/user.model';
 
 
 
@@ -38,6 +38,25 @@ export const testAccessToFinancialUnit = async (financialUnitId: string, req: Re
     const userId: string | null = req.session ? req.session.userId : null;
     if (!(await getHasUserAccessToFinancialUnit(financialUnitId, userId as string))) {
         throw new Error('Chybí uživatelská práva k účetní jednotce');
+    }
+}
+
+
+
+export const getHasUserOwnershipToFinancialUnit = async (financialUnitId: string, userId: string): Promise<boolean> => {
+    return await FinancialUnitModel.exists({ _id: financialUnitId, owner: userId })
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při ověřování vlastnictví uživatele k účetní jednotce');
+        });
+}
+
+
+
+export const testOwnershipToFinancialUnit = async (financialUnitId: string, req: Request): Promise<void> => {
+    const userId: string | null = req.session ? req.session.userId : null;
+    if (!(await getHasUserOwnershipToFinancialUnit(financialUnitId, userId as string))) {
+        throw new Error('Chybí vlastnická práva k účetní jednotce');
     }
 }
 
@@ -164,9 +183,6 @@ export const addUserToFinancialUnit = async (
     financialUnitId: string,
     userId: string
 ): Promise<void> => {
-    if (await getHasUserAccessToFinancialUnit(financialUnitId, userId)) {
-        return;
-    }
     await FinancialUnitModel.update(
         { _id: financialUnitId }, 
         { $push: { users: userId } },
@@ -175,5 +191,22 @@ export const addUserToFinancialUnit = async (
     .catch((err) => {
         console.error(err);
         throw new Error('Chyba při přidávání uživatelských práv k účetní jednotce');
+    });
+}
+
+
+
+export const removeUserToFinancialUnit = async (
+    financialUnitId: string,
+    userId: string
+): Promise<void> => {
+    await FinancialUnitModel.update(
+        { _id: financialUnitId }, 
+        { $pull: { users: userId } },
+    )
+    .exec()
+    .catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při odebírání uživatelských práv k účetní jednotce');
     });
 }

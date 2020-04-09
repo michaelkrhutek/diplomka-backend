@@ -12,7 +12,7 @@ router.get('/get-inventory-transaction-templates', (req: Request, res: Response)
         res.send(transactionTemplates);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -22,7 +22,7 @@ router.get('/get-all-inventory-transaction-templates', (req: Request, res: Respo
         res.send(transactionTemplates);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -41,7 +41,7 @@ router.post('/create-inventory-transaction-template', (req: Request, res: Respon
         res.send(transactionTemplate);
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 })
 
@@ -51,7 +51,7 @@ router.delete('/delete-all-inventory-transaction-templates', (req: Request, res:
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
@@ -61,7 +61,7 @@ router.delete('/delete-inventory-transaction-template', (req: Request, res: Resp
         res.send();
     }).catch((err) => {
         console.error(err);
-        res.status(500).json(err);
+        res.status(500).json({ message: err.message });
     });
 });
 
