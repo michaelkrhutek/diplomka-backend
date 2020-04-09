@@ -47,13 +47,14 @@ export const getInventoryGroup = async (inventoryGroupId: string): Promise<IInve
 export const createDefaultInventoryGroups = async (
     financialUnitId: string,
     rawData: IDefaultInventoryGroupData[],
-    financialAccounts: IFinancialAccountDoc[]
+    financialAccounts: IFinancialAccountDoc[],
+    stockDecrementType: StockDecrementType
 ): Promise<IInventoryGroupDoc[]> => {
     const inventoryGroupsPromises: Promise<IInventoryGroupDoc>[] = rawData.map(async (group) => {
         const newGroupData: INewInventoryGroup = {
             name: group.name,
             financialUnit: financialUnitId,
-            defaultStockDecrementType: group.defaultStockDecrementType
+            defaultStockDecrementType: stockDecrementType
         };
         const inventoryGroup: IInventoryGroupDoc = await new InventoryGroupModel(newGroupData).save();
         await inventoryTransactionTemplateService.createDefaultInventoryTransactionTemplates(

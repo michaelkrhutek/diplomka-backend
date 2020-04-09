@@ -583,6 +583,64 @@ export const getFiltredInventoryTransactions = async (
         .populate('inventoryItem')
         .populate('creator', '-username -password')
         .sort({ effectiveDate: 1 })
+        .exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání skladových transakcí');
+        });
+    return inventoryTransactions;
+}
+
+
+
+export const getFiltredInventoryTransactionsTotalCount = async (
+    financialUnitId: string,
+    inventoryItemId: string | null,
+    transactionType: InventoryTransactionType | null,
+    dateFrom: Date | null,
+    dateTo: Date | null
+): Promise<number> => {
+    const inventoryTransactionsTotalCount: number = await InventoryTransactionModel
+        .countDocuments({
+            financialUnit: financialUnitId,
+            inventoryItem:  inventoryItemId || { $exists: true },
+            type: transactionType || { $exists: true },
+            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date },
+            isActive: true
+        })
+        .exec()
+        .catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání skladových transakcí');
+        });
+    return inventoryTransactionsTotalCount;
+}
+
+
+
+export const getFiltredPaginatedInventoryTransactions = async (
+    financialUnitId: string,
+    inventoryItemId: string | null,
+    transactionType: InventoryTransactionType | null,
+    dateFrom: Date | null,
+    dateTo: Date | null,
+    pageIndex: number,
+    pageSize: number
+): Promise<IInventoryTransactionPopulatedDoc<any>[]> => {
+    console.log(pageIndex, pageSize);
+    const inventoryTransactions: IInventoryTransactionPopulatedDoc<any>[] = await InventoryTransactionModel
+        .find({
+            financialUnit: financialUnitId,
+            inventoryItem:  inventoryItemId || { $exists: true },
+            type: transactionType || { $exists: true },
+            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date },
+            isActive: true
+        })
+        .skip((pageIndex - 1) * pageSize)
+        .limit(pageSize)
+        .populate('inventoryItem')
+        .populate('creator', '-username -password')
+        .sort({ effectiveDate: 1 })
         .exec().catch((err) => {
             console.error(err);
             throw new Error('Chyba při načítání skladových transakcí');

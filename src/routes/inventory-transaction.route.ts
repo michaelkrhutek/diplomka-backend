@@ -37,6 +37,44 @@ router.get('/get-filtred-inventory-transactions', async (req: Request, res: Resp
     }
 });
 
+router.get('/get-filtred-inventory-transactions-count', async (req: Request, res: Response) => {
+    try {
+        const financialUnitId: string = req.query.financialUnitId;
+        await financialUnitService.testAccessToFinancialUnit(financialUnitId as string, req);
+        const inventoryItemId: string | null = req.query.inventoryItemId || null;
+        const transactionType: InventoryTransactionType | null = req.query.transactionType || null;
+        const dateFrom: Date | null = req.query.dateFrom ? utilitiesService.getUTCDate(new Date(req.query.dateFrom)) : null;
+        const dateTo: Date | null =  req.query.dateTo ? utilitiesService.getUTCDate(new Date(req.query.dateTo), true) : null;
+        const count = await inventoryTransactionService.getFiltredInventoryTransactionsTotalCount(
+            financialUnitId, inventoryItemId, transactionType, dateFrom, dateTo
+        );
+        res.json(count);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.get('/get-filtred-paginated-inventory-transactions', async (req: Request, res: Response) => {
+    try {
+        const financialUnitId: string = req.query.financialUnitId;
+        await financialUnitService.testAccessToFinancialUnit(financialUnitId as string, req);
+        const inventoryItemId: string | null = req.query.inventoryItemId || null;
+        const transactionType: InventoryTransactionType | null = req.query.transactionType || null;
+        const dateFrom: Date | null = req.query.dateFrom ? utilitiesService.getUTCDate(new Date(req.query.dateFrom)) : null;
+        const dateTo: Date | null =  req.query.dateTo ? utilitiesService.getUTCDate(new Date(req.query.dateTo), true) : null;
+        const pageIndex: number = Number(req.query.pageIndex || 1);
+        const pageSize: number = Number(req.query.pageSize || 0);
+        const inventoryTransactions = await inventoryTransactionService.getFiltredPaginatedInventoryTransactions(
+            financialUnitId, inventoryItemId, transactionType, dateFrom, dateTo, pageIndex, pageSize
+        ).catch(() => []);
+        res.send(inventoryTransactions);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
 router.post('/create-inventory-transaction', async (req: Request, res: Response) => {
     try {
         const type: InventoryTransactionType = req.query.type;

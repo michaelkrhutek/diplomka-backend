@@ -1,4 +1,3 @@
-import { StockDecrementType } from "./models/stock.model";
 import { InventoryTransactionType } from "./models/inventory-transaction.model";
 
 export interface IDefaultFinancialAccountData {
@@ -30,14 +29,12 @@ export interface IDefaultInventoryTransactionTemplateData {
 
 export interface IDefaultInventoryGroupData {
     name: string;
-    defaultStockDecrementType: StockDecrementType;
     inventoryTransactionTemplates: IDefaultInventoryTransactionTemplateData[];
 }
 
 export const defaultInventoryGroups: IDefaultInventoryGroupData[] = [
     {
         name: 'Materiál',
-        defaultStockDecrementType: StockDecrementType.FIFO,
         inventoryTransactionTemplates: [
             {
                 description: 'Naskladnění materiálu',
@@ -67,7 +64,6 @@ export const defaultInventoryGroups: IDefaultInventoryGroupData[] = [
     },
     {
         name: 'Polotovary',
-        defaultStockDecrementType: StockDecrementType.FIFO,
         inventoryTransactionTemplates: [
             {
                 description: 'Naskladnění polotovarů',
@@ -97,7 +93,6 @@ export const defaultInventoryGroups: IDefaultInventoryGroupData[] = [
     },
     {
         name: 'Výrobky',
-        defaultStockDecrementType: StockDecrementType.FIFO,
         inventoryTransactionTemplates: [
             {
                 description: 'Naskladnění výrobků',
@@ -127,7 +122,6 @@ export const defaultInventoryGroups: IDefaultInventoryGroupData[] = [
     },
     {
         name: 'Zboží',
-        defaultStockDecrementType: StockDecrementType.FIFO,
         inventoryTransactionTemplates: [
             {
                 description: 'Naskladnění zboží',

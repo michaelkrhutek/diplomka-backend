@@ -116,6 +116,58 @@ export const getFiltredFinancialTransaction = async (
 
 
 
+export const getFiltredFinancialTransactionCount = async (
+    financialUnitId: string,
+    accountId: string | null,
+    dateFrom: Date | null,
+    dateTo: Date | null,
+): Promise<number> => {
+    const count: number = await FinancialTransactionModel
+        .countDocuments({
+            financialUnit: financialUnitId,
+            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date },
+            isActive: true
+        })
+        .or(accountId ? [{ debitAccount: accountId }, { creditAccount: accountId }] : [{_id: { $exists: true }}])
+        .exec().catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání účetních zápisů');
+        });
+    return count;
+}
+
+
+
+export const getFiltredPaginatedFinancialTransaction = async (
+    financialUnitId: string,
+    accountId: string | null,
+    dateFrom: Date | null,
+    dateTo: Date | null,
+    pageIndex: number,
+    pageSize: number,
+): Promise<IFinancialTransactionDoc[]> => {
+    const financialTransactions: IFinancialTransactionDoc[] = await FinancialTransactionModel
+        .find({
+            financialUnit: financialUnitId,
+            effectiveDate: { $gte: dateFrom as Date, $lte: dateTo as Date },
+            isActive: true
+        })
+        .or(accountId ? [{ debitAccount: accountId }, { creditAccount: accountId }] : [{_id: { $exists: true }}])
+        .skip((pageIndex - 1) * pageSize)
+        .limit(pageSize)
+        .populate('debitAccount')
+        .populate('creditAccount')
+        .populate('creator', '-username -password')
+        .sort({ effectiveDate: 1 })
+        .exec().catch((err) => {
+            console.error(err);
+            throw new Error('Chyba při načítání účetních zápisů');
+        });
+    return financialTransactions;
+}
+
+
+
 export const deleteAllFinancialTransactions = async (financialUnitId: string): Promise<'OK'> => {
     await FinancialTransactionModel.deleteMany({ financialUnit: financialUnitId })
         .catch((err) => {

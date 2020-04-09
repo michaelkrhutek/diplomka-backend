@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import * as financialUnitService from '../services/financial-unit.service';
+import { StockDecrementType } from '../models/stock.model';
+import * as stockService from '../services/stock.service';
 
 const router: Router = Router();
 
@@ -28,8 +30,16 @@ router.get('/get-financial-unit', async (req: Request, res: Response) => {
 router.post('/create-financial-unit', async (req: Request, res: Response) => {
     try {
         const name: string = req.query.name;
+        const createDefaultData: boolean = req.query.createDefaultData == 'true';
+        const stockDecrementType: StockDecrementType | null = stockService.parseStockDecrementType(
+            req.query.stockDecrementType
+        );
         const creatorId: string | null = req.session ? req.session.userId : null;
-        const financialUnit = await financialUnitService.createFinancialUnit({ name, users: [creatorId as string], owner: creatorId });
+        const financialUnit = await financialUnitService.createFinancialUnit(
+            { name, users: [creatorId as string], owner: creatorId },
+            createDefaultData,
+            stockDecrementType as StockDecrementType
+        );
         res.send(financialUnit);
     } catch(err) {
         console.error(err);

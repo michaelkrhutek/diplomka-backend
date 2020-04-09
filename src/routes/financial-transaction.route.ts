@@ -30,6 +30,38 @@ router.get('/get-filtred-financial-transactions', (req: Request, res: Response) 
     });
 });
 
+router.get('/get-filtred-financial-transactions-count', (req: Request, res: Response) => {
+    const financialUnitId: string = req.query.financialUnitId;
+    const accountId: string | null = req.query.accountId;
+    const dateFrom: Date | null = req.query.dateFrom ? utilitiesService.getUTCDate(new Date(req.query.dateFrom)) : null;
+    const dateTo: Date | null = req.query.dateTo ? utilitiesService.getUTCDate(new Date(req.query.dateTo)) : null;
+    financialTransactionService.getFiltredFinancialTransactionCount(
+        financialUnitId, accountId, dateFrom, dateTo
+    ).then((count) => {
+        res.json(count);
+    }).catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: err.message });
+    });
+});
+
+router.get('/get-filtred-paginated-financial-transactions', (req: Request, res: Response) => {
+    const financialUnitId: string = req.query.financialUnitId;
+    const accountId: string | null = req.query.accountId;
+    const dateFrom: Date | null = req.query.dateFrom ? utilitiesService.getUTCDate(new Date(req.query.dateFrom)) : null;
+    const dateTo: Date | null = req.query.dateTo ? utilitiesService.getUTCDate(new Date(req.query.dateTo)) : null;
+    const pageIndex: number = Number(req.query.pageIndex || 1);
+    const pageSize: number = Number(req.query.pageSize || 0);
+    financialTransactionService.getFiltredPaginatedFinancialTransaction(
+        financialUnitId, accountId, dateFrom, dateTo, pageIndex, pageSize
+    ).then((financialTransactions) => {
+        res.send(financialTransactions);
+    }).catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: err.message });
+    });
+});
+
 router.get('/get-trial-balance', (req: Request, res: Response) => {
     const financialUnitId: string = req.query.financialUnitId;
     const startDate: Date = new Date(req.query.startDate);
