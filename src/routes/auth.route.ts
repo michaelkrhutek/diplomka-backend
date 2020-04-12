@@ -16,24 +16,29 @@ router.get('/', async (req: Request, res: Response) => {
         });
     if (!user) {
         res.status(401).send();
+    } else {
+        res.send(user);
     }
-    res.send(user);
 });
 
 router.post('/login', async (req: Request, res: Response) => {
-    const loginCredentials: ILoginCredentials = req.body;
-    const user: IUserDoc | null = await userService.getUserUsingByCredentials(loginCredentials.username, loginCredentials.password)
-        .catch((err) => {
-            console.error(err);
-            return null;
-        });
-    if (!user) {
-        res.status(401).send();
+    try {
+        const loginCredentials: ILoginCredentials = req.body;
+        const user: IUserDoc | null = await userService.getUserUsingByCredentials(loginCredentials.username, loginCredentials.password)
+            .catch((err) => {
+                console.error(err);
+                return null;
+            });
+        if (!user) {
+            throw new Error('Uživatel s přihlašovacími údaji nanelezen');
+        }
+        if (req.session) {
+            req.session.userId = user?._id || null;
+        }
+        res.send(user);
+    } catch(err) {
+        res.status(500).json({ message: err.message });
     }
-    if (req.session) {
-        req.session.userId = user?._id || null;
-    }
-    res.send(user);
 });
 
 router.post('/sign-up', (req: Request, res: Response) => {

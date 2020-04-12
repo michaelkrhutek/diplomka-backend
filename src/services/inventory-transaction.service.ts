@@ -80,7 +80,7 @@ export const getLastInventoryTransactionTillEffectiveDate = async (
         .sort({ inventoryItemTransactionIndex: -1 })
         .exec().catch((err) => {
             console.error(err);
-            throw ('Chyba při načítaní skladové transakce');
+            throw ('Chyba při načítaní transakce');
         });
     return inventoryTransaction;
 }
@@ -99,7 +99,7 @@ const getInventoryTransactionByTransactionIndex = async (
         })
         .exec().catch((err) => {
             console.error(err);
-            throw ('Chyba při načítaní skladové transakce');
+            throw ('Chyba při načítaní transakce');
         });
     return inventoryTransaction;
 }
@@ -140,7 +140,7 @@ const getFirstInventoryTransactionWithIndexGreaterThanOrEqual = async (
         .sort({ inventoryItemTransactionIndex: 1 })
         .exec().catch((err) => {
             console.error(err);
-            throw (`Chyba při načítaní skladové transakce následující po transakci`);
+            throw (`Chyba při načítaní predchozí transakce`);
         });
     return inventoryTransaction;
 }
@@ -159,7 +159,7 @@ const getLastInventoryTransactionWithIndexLowerThanOrEqual = async (
         .sort({ inventoryItemTransactionIndex: -1 })
         .exec().catch((err) => {
             console.error(err);
-            throw (`Chyba při načítaní skladové transakce následující po transakci`);
+            throw (`Chyba při načítaní následné transakce`);
         });
     return inventoryTransaction;
 }
@@ -172,7 +172,7 @@ const insertInventoryTransactionToDb = async <SpecificData>(
     const intentoryTransaction: IInventoryTransactionDoc<SpecificData> = await new InventoryTransactionModel(data).save()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při vytváření skladové transakce');
+            throw new Error('Chyba při vytváření transakce');
         });
     return intentoryTransaction;
 }
@@ -188,16 +188,16 @@ const createIncrementInventoryTransaction = async (
 ): Promise<IInventoryTransactionDoc<IIncrementInventoryTransactionSpecificData>> => {
     const inventoryItem: IInventoryItemDoc | null = await inventoryItemService.getInventoryItem(requestData.inventoryItemId);
     if (!inventoryItem) {
-        throw new Error(`Skladová položka s ID ${requestData.inventoryItemId} neexistuje`);
+        throw new Error(`Položka nenalezena`);
     }
     if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnit, requestData.effectiveDate))) {
-        throw new Error('Ucetni obdobi s danym datumem nenalezeno');
+        throw new Error('Účetní období s daným datem nenalezeno');
     }
     const stockDecrementType: StockDecrementType | null = await inventoryGroupService.getInventoryGroupStockDecrementType(
         inventoryItem.inventoryGroup
     );
     if (!stockDecrementType) {
-        throw new Error(`Nenalezena ocenovaci metod pro vyskladneni`);
+        throw new Error(`Oceňovací metoda nenalazena`);
     }
     const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
     const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
@@ -268,16 +268,16 @@ const createDecrementInventoryTransaction = async (
 ): Promise<IInventoryTransactionDoc<IDecrementInventoryTransactionSpecificData>> => {
     const inventoryItem: IInventoryItemDoc | null = await inventoryItemService.getInventoryItem(requestData.inventoryItemId);
     if (!inventoryItem) {
-        throw new Error(`Skladová položka s ID ${requestData.inventoryItemId} neexistuje`);
+        throw new Error(`Položka nenalezena`);
     }
     if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnit, requestData.effectiveDate))) {
-        throw new Error('Ucetni obdobi s danym datumem nenalezeno');
+        throw new Error('Účetní období s daným datem nenalezeno');
     }
     const stockDecrementType: StockDecrementType | null = await inventoryGroupService.getInventoryGroupStockDecrementType(
         inventoryItem.inventoryGroup
     );
     if (!stockDecrementType) {
-        throw new Error(`Nenalezena ocenovaci metoda`);
+        throw new Error(`Oceňovací metoda nenalezena`);
     }
     const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
     const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
@@ -427,8 +427,7 @@ const deriveSubsequentInventoryTransactions = async (
     iterationLimit: number
 ): Promise<void> => {
     if (currentIteration > iterationLimit) {
-        throw new Error('Limit iteraci pro upravu naslednych transakci prekrocen');
-        ;
+        throw new Error('Limit počtu iterací pro přepočet následných transakcí překročen');
     }
     const subsequentInventoryTransaction: IInventoryTransactionDoc<any> | null = await getFirstInventoryTransactionWithIndexGreaterThanOrEqual(
         inventoryItemId, currentInventoryTransaction ? subsequentTransactionIndex : 0
@@ -473,8 +472,7 @@ const deriveSubsequentInventoryTransactionsDuringDelete = async (
     iterationLimit: number
 ): Promise<void> => {
     if (currentIteration > iterationLimit) {
-        throw new Error('Limit iteraci pro upravu naslednych transakci prekrocen');
-        ;
+        throw new Error('Limit počtu iterací pro přepočet následných transakcí překročen');
     }
     const subsequentInventoryTransaction: IInventoryTransactionDoc<any> | null = await getFirstInventoryTransactionWithIndexGreaterThanOrEqual(
         inventoryItemId, subsequentTransactionIndex
@@ -527,7 +525,7 @@ export const createInventoryTransaction = async (
     ).catch((err) => {
         console.error(err);
         unlockInventoryItem(requestData.inventoryItemId);
-        throw new Error('Chyba pri vytvareni nove transakce');
+        throw err;
     });
     await deriveSubsequentInventoryTransactions(
         requestData.inventoryItemId, newInventoryTransaction, newInventoryTransaction.inventoryItemTransactionIndex, newInventoryTransaction.id, 1, 50
@@ -535,7 +533,7 @@ export const createInventoryTransaction = async (
         console.error(err);
         deleteInactiveInventoryTransaction(newInventoryTransaction.id);
         unlockInventoryItem(requestData.inventoryItemId);
-        throw new Error('Chyba pri prepocitavani naslednych transakci');
+        throw err;
     })
     await deleteActiveInventoryTransactionsWithIndexEqualOrLarger(
         newInventoryTransaction.inventoryItem,
@@ -544,7 +542,7 @@ export const createInventoryTransaction = async (
         console.error(err);
         deleteInactiveInventoryTransaction(newInventoryTransaction.id);
         unlockInventoryItem(requestData.inventoryItemId);
-        throw new Error('Chyba pri odstranovani puvodnich naslednych transakci');
+        throw err;
     });
     await activateCreatedInventoryTransactions(newInventoryTransaction.id);
     // Unlocking inventory item
@@ -558,7 +556,7 @@ export const getAllInventoryTransactions = async (financialUnitId: string): Prom
     const inventoryTransactions: IInventoryTransactionDoc<any>[] = await InventoryTransactionModel.find({ financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při načítání skladových transakcí');
+            throw new Error('Chyba při načítání transakcí');
         });
     return inventoryTransactions;
 }
@@ -586,7 +584,7 @@ export const getFiltredInventoryTransactions = async (
         .exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při načítání skladových transakcí');
+            throw new Error('Chyba při načítání transakcí');
         });
     return inventoryTransactions;
 }
@@ -611,7 +609,7 @@ export const getFiltredInventoryTransactionsTotalCount = async (
         .exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při načítání skladových transakcí');
+            throw new Error('Chyba při načítání transakcí');
         });
     return inventoryTransactionsTotalCount;
 }
@@ -643,7 +641,7 @@ export const getFiltredPaginatedInventoryTransactions = async (
         .sort({ effectiveDate: 1 })
         .exec().catch((err) => {
             console.error(err);
-            throw new Error('Chyba při načítání skladových transakcí');
+            throw new Error('Chyba při načítání transakcí');
         });
     return inventoryTransactions;
 }
@@ -658,7 +656,7 @@ export const getPopulatedInventoryTransactions = async (financialUnit: string): 
         .sort({ effectiveDate: 1 })
         .exec().catch((err) => {
             console.error(err);
-            throw new Error('Chyba při načítání skladových transakcí');
+            throw new Error('Chyba při načítání transakcí');
         });
     return inventoryTransactions;
 }
@@ -692,7 +690,7 @@ export const deleteInventoryTransaction = async (inventoryTransactionId: string)
         console.error(err);
         deleteInactiveInventoryTransaction(transactionToDelete.id);
         unlockInventoryItem(inventoryItemId);
-        throw new Error('Chyba pri prepocitavani naslednych transakci');
+        throw new Error('Chyba při přepočítávání následných transakcí');
     });
     await deleteActiveInventoryTransactionsWithIndexEqualOrLarger(
         inventoryItemId, transactionToDelete.inventoryItemTransactionIndex
@@ -700,7 +698,7 @@ export const deleteInventoryTransaction = async (inventoryTransactionId: string)
         console.error(err);
         deleteInactiveInventoryTransaction(transactionToDelete.id);
         unlockInventoryItem(inventoryItemId);
-        throw new Error('Chyba pri odstranovani puvodnich naslednych transakci');
+        throw new Error('Chyba při odstraňování původních transakcí');
     });
     await activateCreatedInventoryTransactions(transactionToDelete.id);
     // Unlocking inventory item
@@ -713,7 +711,7 @@ export const deleteAllInventoryTransactions = async (financialUnitId: string): P
     await InventoryTransactionModel.deleteMany({ financialUnit: financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
-            throw new Error('Chyba při odstraňování skladových transakcí');
+            throw new Error('Chyba při odstraňování transakcí');
         });
     await financialTransactionService.deleteAllFinancialTransactions(financialUnitId);
     return 'OK';

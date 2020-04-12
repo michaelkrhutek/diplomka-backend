@@ -5,7 +5,6 @@ import bodyParser from 'body-parser';
 import session from 'express-session';
 import * as https from 'https';
 import connectMongo from 'connect-mongo';
-import { mongoose } from './src/mongoose-instance';
 import financialUnitRouter from './src/routes/financial-unit.route';
 import financialPeriodRouter from './src/routes/financial-period.route';
 import financialAccountRouter from './src/routes/financial-account.route';
@@ -19,16 +18,16 @@ import authRouter from './src/routes/auth.route';
 import * as fs from 'fs';
 import credentials from './src/credentials.json';
 import { ICredentials } from './src/credentials.interface';
+import { mongoose } from './src/mongoose-instance';
 
 console.log(process.argv);
 
 type AppMode = 'dev' | 'prod';
 const appMode: AppMode = (process.argv[2] as AppMode) || 'dev';
-console.log(appMode);
+const port = Number(process.argv[3]) || 3000;
+console.log(appMode, port);
 
 const app = express();
-const port = Number(process.argv[3]) || 3000;
-console.log(port);
 
 if (appMode == 'dev') {
     const whiteList: string[] = [
@@ -56,7 +55,9 @@ app.use(session({
     store: new MongoStore({ mongooseConnection: mongoose.connection }),
     cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 7
-    }
+    },
+    resave: false,
+    saveUninitialized: false
 }));
 
 app.use((req: Request, _res: Response, next: NextFunction) => {

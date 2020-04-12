@@ -1,10 +1,9 @@
 import { FinancialTransactionModel } from "../models/financial-transaction.model";
 import { mongoose } from "../mongoose-instance";
-import { FinancialAccountModel, IFinancialAccount, IFinancialAccountDoc } from "../models/financial-account.model";
+import { FinancialAccountModel, IFinancialAccount } from "../models/financial-account.model";
 import { Schema } from "mongoose";
 import { IAccountTurnover, ITrialBalance, ITrialBalanceAccount } from "../models/trial-balance.model";
 import * as utilitiesService from './utilities.service';
-import * as financialAccountService from './financial-account.service';
 import * as financialPeriodService from './financial-period.service';
 import { IFinancialPeriodDoc } from "../models/financial-period.model";
 
@@ -67,7 +66,6 @@ export const getTrialBalance = async (
 ): Promise<ITrialBalance> => {
     const startDateUTC: Date = utilitiesService.getUTCDate(startDate);
     const endDateUTC: Date = utilitiesService.getUTCDate(endDate);
-    // const financialAccounts: IFinancialAccountDoc[] = await financialAccountService.getAllFinancialAccounts(financialUnitId);
     const accountsTurnovers: IAccountTurnover[] = await Promise.all([
         getAccountsTurnovers(financialUnitId, 'debit', startDateUTC, endDateUTC),
         getAccountsTurnovers(financialUnitId, 'credit', startDateUTC, endDateUTC)
@@ -82,18 +80,6 @@ export const getTrialBalance = async (
     let totalDebitEntries: number = 0;
     let totalCreditAmount: number = 0;
     let totalCreditEntries: number = 0;
-    // financialAccounts.forEach((account) => {
-    //     const _id: string = account._id.toString();
-    //     const trialBalanceAccount: ITrialBalanceAccount = {
-    //         _id,
-    //         account,
-    //         debitAmount: 0,
-    //         debitEntriesCount: 0,
-    //         creditAmount: 0,
-    //         creditEntriesCount: 0
-    //     };
-    //     trialBalanceAccountsMap.set(_id, trialBalanceAccount);
-    // });
     accountsTurnovers.forEach((accountTurnover) => {
         const accountId: string = accountTurnover.account ? accountTurnover.account._id.toString() : 'null';
         const getNewTrialBalanceAccount = (accountTurnover: IAccountTurnover): ITrialBalanceAccount => {

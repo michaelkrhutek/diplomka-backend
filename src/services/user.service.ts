@@ -78,7 +78,8 @@ export const createUser = async (
     if (await getDisplayNameExists(displayName)) {
         throw new Error('Jméno k zobrazení už existuje');
     }
-    const user: IUserDoc = await new UserModel({ displayName, username, password }).save()
+    const displayNameLowerCased: string = displayName.toLowerCase();
+    const user: IUserDoc = await new UserModel({displayName, displayNameLowerCased, username, password }).save()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při ukládání uživatele');

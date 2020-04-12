@@ -121,7 +121,7 @@ export const updateInventoryGroup = async (id: string, data: INewInventoryGroup)
 
 
 export const deleteAllInventoryGroups = async (financialUnitId: string): Promise<void> => {
-    await InventoryGroupModel.deleteMany({ financialUnitId }).exec()
+    await InventoryGroupModel.deleteMany({ financialUnit: financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při odstraňování skupin');            

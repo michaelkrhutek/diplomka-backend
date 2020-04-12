@@ -61,14 +61,15 @@ router.delete('/delete-all-inventory-groups', (req: Request, res: Response) => {
     });
 });
 
-router.delete('/delete-inventory-group', (req: Request, res: Response) => {
-    const id: string = req.query.id;
-    inventoryGroupService.deleteInventoryGroup(id).then(() => {
+router.delete('/delete-inventory-group', async (req: Request, res: Response) => {
+    try {
+        const id: string = req.query.id;
+        await inventoryGroupService.deleteInventoryGroup(id);
         res.send();
-    }).catch((err) => {
+    } catch(err) {
         console.error(err);
         res.status(500).json({ message: err.message });
-    });
+    }
 });
 
 export default router;

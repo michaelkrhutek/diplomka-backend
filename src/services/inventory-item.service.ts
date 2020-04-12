@@ -105,7 +105,7 @@ export const updateInventoryItem = async (id: string, data: INewInventoryItem): 
 
 
 export const deleteAllInventoryItems = async (financialUnitId: string): Promise<void> => {
-    await InventoryItemModel.deleteMany({ financialUnitId }).exec()
+    await InventoryItemModel.deleteMany({ financialUnit: financialUnitId }).exec()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při odstraňování položek');            
