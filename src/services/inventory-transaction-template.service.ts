@@ -9,7 +9,22 @@ import { IDefaultInventoryTransactionTemplateData } from "../default-data";
 import { IFinancialAccountDoc } from "../models/financial-account.model";
 import * as financialUnitService from './financial-unit.service';
 import * as inventoryGroupService from './inventory-group.service';
-import { InventoryTransactionModel } from "../models/inventory-transaction.model";
+import { InventoryTransactionType } from "../models/inventory-transaction.model";
+
+
+
+export const getInventoryTransactionTemplate = async (
+    id: string
+): Promise<IInventoryTransactionTemplateDoc | null> => {
+    const inventoryTransactionTemplate: IInventoryTransactionTemplateDoc | null = await InventoryTransactionTemplateModel
+    .findById(id)
+    .exec().catch((err) => {
+        console.error(err);
+        throw new Error('Chyba při načítání šablony transakce');
+    });
+return inventoryTransactionTemplate; 
+}
+
 
 
 export const getInventoryTransactionTemplatesWithPopulatedRefs = async (
@@ -20,6 +35,8 @@ export const getInventoryTransactionTemplatesWithPopulatedRefs = async (
     .populate('inventoryGroup')
     .populate('debitAccount')
     .populate('creditAccount')
+    .populate('saleDebitAccount')
+    .populate('saleCreditAccount')
     .exec().catch((err) => {
         console.error(err);
         throw new Error('Chyba při načítání šablon transakcí');
@@ -37,6 +54,8 @@ export const getAllInventoryTransactionTemplatesWithPopulatedRefs = async (
     .populate('inventoryGroup')
     .populate('debitAccount')
     .populate('creditAccount')
+    .populate('saleDebitAccount')
+    .populate('saleCreditAccount')
     .exec().catch((err) => {
         console.error(err);
         throw new Error('Chyba při načítání šablon transakcí');
@@ -83,6 +102,12 @@ export const createDefaultInventoryTransactionTemplates = async (
             creditAccount: creditAccountId,
 
         };
+        if (temp.transactionType == InventoryTransactionType.Sale) {
+            const saleDebitAccountId: string = (financialAccounts.find(acc => acc.code == temp.saleDebitAccountCode) as IFinancialAccountDoc)._id.toString();
+            const saleCreditAccountId: string = (financialAccounts.find(acc => acc.code == temp.saleCreditAccountCode) as IFinancialAccountDoc)._id.toString();
+            newTemplateData.saleDebitAccount = saleDebitAccountId;
+            newTemplateData.saleCreditAccount = saleCreditAccountId;
+        }
         return newTemplateData;
     });
     const inventoryTransactionTemplates: IInventoryTransactionTemplateDoc[] = await InventoryTransactionTemplateModel.insertMany(data);
@@ -129,4 +154,11 @@ export const deleteInventoryTransactionTemplatesWithInventoryGroup = async (inve
             console.error(err);
             throw new Error('Chyba při odstraňovaní šablon');
         });
+}
+
+
+
+export const getInventoryTransactionTemplateFinancialUnitId = async (id: string): Promise<string | null> => {
+    const transactionTemplate: IInventoryTransactionTemplateDoc | null = await getInventoryTransactionTemplate(id);
+    return transactionTemplate ? transactionTemplate.financialUnit : null;
 }

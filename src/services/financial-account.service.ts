@@ -1,4 +1,4 @@
-import { FinancialAccountModel, IFinancialAccountDoc, INewFinancialAccount } from '../models/financial-account.model';
+import { FinancialAccountModel, IFinancialAccountDoc, INewFinancialAccount, FinancialAccountType } from '../models/financial-account.model';
 import * as financialUnitService from './financial-unit.service'; 
 import * as inventoryTransactionService from './inventory-transaction.service';
 import * as inventoryTransactionTemplateService from './inventory-transaction-template.service'; 
@@ -45,6 +45,13 @@ export const getFinancialAccount = async (id: string): Promise<IFinancialAccount
 
 
 
+export const getFinancialAccountFinancialUnitId = async (financialAccountId: string): Promise<string | null> => {
+    const financialAccount: IFinancialAccountDoc | null = await getFinancialAccount(financialAccountId);
+    return financialAccount ? financialAccount.financialUnit : null;
+}
+
+
+
 export const createDefaultFinancialAccounts = async (
     financialUnitId: string,
     rawData: IDefaultFinancialAccountData[]
@@ -53,6 +60,7 @@ export const createDefaultFinancialAccounts = async (
         const newAccountData: INewFinancialAccount = {
             name: acc.name,
             code: acc.code,
+            type: acc.type,
             financialUnit: financialUnitId
         };
         return newAccountData;
@@ -129,4 +137,21 @@ export const deleteFinancialAccount = async (financialAccountId: string): Promis
         console.error(err);
         throw new Error('Chyba při odstraňování transakcí a účetních zápisů');       
     });
+}
+
+
+
+export const parseAccountType = (typeAsString: string): FinancialAccountType => {
+    switch (typeAsString) {
+        case FinancialAccountType.Assets.toString():
+            return FinancialAccountType.Assets;
+        case FinancialAccountType.Expenses.toString():
+            return FinancialAccountType.Expenses;
+        case FinancialAccountType.Liabilities.toString():
+            return FinancialAccountType.Liabilities;
+        case FinancialAccountType.Revenues.toString():
+            return FinancialAccountType.Revenues;
+        default:
+            throw new Error('Neznámý typ účtu');
+    }
 }

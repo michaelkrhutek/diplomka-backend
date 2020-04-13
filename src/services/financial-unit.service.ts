@@ -11,7 +11,7 @@ import { IFinancialAccountDoc } from '../models/financial-account.model';
 import { defaultAccounts, defaultInventoryGroups } from '../default-data';
 import { Request } from 'express';
 import { IUserDoc } from '../models/user.model';
-import { StockDecrementType } from '../models/stock.model';
+import { StockValuationMethod } from '../models/stock.model';
 
 
 
@@ -104,7 +104,7 @@ export const getFinancialUnitUsers = async (financialUnitId: string): Promise<IU
 
 const generateDefaultDataInFinancialUnit = async (
     financialUnitId: string,
-    stockDecrementType: StockDecrementType
+    stockValuationMethod: StockValuationMethod
 ): Promise<void> => {
     const startDate: Date = utilitiesService.getUTCDate(new Date());
     startDate.setMonth(0);
@@ -116,7 +116,7 @@ const generateDefaultDataInFinancialUnit = async (
     const financialAccounts: IFinancialAccountDoc[] = await financialAccountService
         .createDefaultFinancialAccounts(financialUnitId, defaultAccounts);
     await inventoryGroupService.createDefaultInventoryGroups(
-        financialUnitId, defaultInventoryGroups, financialAccounts, stockDecrementType
+        financialUnitId, defaultInventoryGroups, financialAccounts, stockValuationMethod
     );
 }
 
@@ -125,15 +125,15 @@ const generateDefaultDataInFinancialUnit = async (
 export const createFinancialUnit = async (
     data: INewFinancialUnit,
     createDefaultData: boolean,
-    stockDecrementType: StockDecrementType
+    stockValuationMethod: StockValuationMethod
 ): Promise<IFinancialUnitDoc> => {
     const financialUnit: IFinancialUnitDoc = await new FinancialUnitModel(data).save()
         .catch((err) => {
             console.error(err);
             throw new Error('Chyba při vytváření účetní jednotky');
         });
-    if (createDefaultData && stockDecrementType) {
-        await generateDefaultDataInFinancialUnit(financialUnit._id.toString(), stockDecrementType)
+    if (createDefaultData && stockValuationMethod) {
+        await generateDefaultDataInFinancialUnit(financialUnit._id.toString(), stockValuationMethod)
         .catch((err) => {
             console.error(err);
             deleteFinancialUnit(financialUnit._id.toString());

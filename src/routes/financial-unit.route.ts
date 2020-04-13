@@ -1,18 +1,19 @@
 import { Router, Request, Response } from 'express';
 import * as financialUnitService from '../services/financial-unit.service';
-import { StockDecrementType } from '../models/stock.model';
+import { StockValuationMethod } from '../models/stock.model';
 import * as stockService from '../services/stock.service';
 
 const router: Router = Router();
 
-router.get('/get-all-financial-units', (req: Request, res: Response) => {
-    const userId: string | null = req.session ? req.session.userId : null;
-    financialUnitService.getAllFinancialUnits(userId as string).then((financialUnits) => {
+router.get('/get-all-financial-units', async (req: Request, res: Response) => {
+    try {
+        const userId: string | null = req.session ? req.session.userId : null;
+        const financialUnits = await financialUnitService.getAllFinancialUnits(userId as string)
         res.send(financialUnits);
-    }).catch((err) => {
+    } catch(err) {
         console.error(err);
         res.status(500).json({ message: err.message });
-    });
+    }
 });
 
 router.get('/get-financial-unit', async (req: Request, res: Response) => {
@@ -31,14 +32,14 @@ router.post('/create-financial-unit', async (req: Request, res: Response) => {
     try {
         const name: string = req.query.name;
         const createDefaultData: boolean = req.query.createDefaultData == 'true';
-        const stockDecrementType: StockDecrementType | null = stockService.parseStockDecrementType(
-            req.query.stockDecrementType
+        const stockValuationMethod: StockValuationMethod | null = stockService.parseStockValuationMethod(
+            req.query.stockValuationMethod
         );
         const creatorId: string | null = req.session ? req.session.userId : null;
         const financialUnit = await financialUnitService.createFinancialUnit(
             { name, users: [creatorId as string], owner: creatorId },
             createDefaultData,
-            stockDecrementType as StockDecrementType
+            stockValuationMethod as StockValuationMethod
         );
         res.send(financialUnit);
     } catch(err) {

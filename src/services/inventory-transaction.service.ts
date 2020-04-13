@@ -16,7 +16,7 @@ import * as inventoryGroupService from './inventory-group.service';
 import * as stockService from './stock.service';
 import * as utilitiesService from './utilities.service';
 import { INewFinancialTransaction, FinancialTransactionModel } from "../models/financial-transaction.model";
-import { IStockBatch, StockDecrementType, IStockQuantityChangeResult, IStock } from "../models/stock.model";
+import { IStockBatch, StockValuationMethod, IStockQuantityChangeResult, IStock } from "../models/stock.model";
 import { Error } from "mongoose";
 
 
@@ -193,10 +193,10 @@ const createIncrementInventoryTransaction = async (
     if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnit, requestData.effectiveDate))) {
         throw new Error('Účetní období s daným datem nenalezeno');
     }
-    const stockDecrementType: StockDecrementType | null = await inventoryGroupService.getInventoryGroupStockDecrementType(
+    const stockValuationMethod: StockValuationMethod | null = await inventoryGroupService.getInventoryGroupStockValuationMethod(
         inventoryItem.inventoryGroup
     );
-    if (!stockDecrementType) {
+    if (!stockValuationMethod) {
         throw new Error(`Oceňovací metoda nenalazena`);
     }
     const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
@@ -213,7 +213,7 @@ const createIncrementInventoryTransaction = async (
         transactionIndex: inventoryItemTransactionIndex
     };
     const stock: IStock = stockService.getStockIncrementResult(
-        currentStock, newStockBatch, stockDecrementType
+        currentStock, newStockBatch, stockValuationMethod
     ).stock;
     const totalTransactionAmount: number = utilitiesService.getRoundedNumber(
         requestData.specificData.quantity * requestData.specificData.costPerUnit, 2
@@ -231,7 +231,7 @@ const createIncrementInventoryTransaction = async (
         specificData: requestData.specificData,
         stockBeforeTransaction: currentStock,
         stockAfterTransaction: stock,
-        stockDecrementTypeApplied: stockDecrementType,
+        stockValuationMethodApplied: stockValuationMethod,
         isDerivedTransaction: !!transactionIdForcingDerivation,
         transactionForcingDerivation: transactionIdForcingDerivation,
         isActive: false,
@@ -273,10 +273,10 @@ const createDecrementInventoryTransaction = async (
     if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnit, requestData.effectiveDate))) {
         throw new Error('Účetní období s daným datem nenalezeno');
     }
-    const stockDecrementType: StockDecrementType | null = await inventoryGroupService.getInventoryGroupStockDecrementType(
+    const stockValuationMethod: StockValuationMethod | null = await inventoryGroupService.getInventoryGroupStockValuationMethod(
         inventoryItem.inventoryGroup
     );
-    if (!stockDecrementType) {
+    if (!stockValuationMethod) {
         throw new Error(`Oceňovací metoda nenalezena`);
     }
     const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
@@ -287,7 +287,7 @@ const createDecrementInventoryTransaction = async (
         previousInventoryTransaction.stockAfterTransaction :
         { totalStockQuantity: 0, totalStockCost: 0, batches: [] };
     const stockDecrementResult: IStockQuantityChangeResult = stockService.getStockDecrementResult(
-        currentStock, requestData.specificData.quantity, stockDecrementType
+        currentStock, requestData.specificData.quantity, stockValuationMethod
     );
     const newInventoryTransactionData: INewInventoryTransaction<IDecrementInventoryTransactionSpecificData> = {
         type: InventoryTransactionType.Decrement,
@@ -302,7 +302,7 @@ const createDecrementInventoryTransaction = async (
         specificData: requestData.specificData,
         stockBeforeTransaction: currentStock,
         stockAfterTransaction: stockDecrementResult.stock,
-        stockDecrementTypeApplied: stockDecrementType,
+        stockValuationMethodApplied: stockValuationMethod,
         isDerivedTransaction: !!transactionIdForcingDerivation,
         transactionForcingDerivation: transactionIdForcingDerivation,
         isActive: false,
@@ -330,6 +330,93 @@ const createDecrementInventoryTransaction = async (
 
 
 
+const createSaleInventoryTransaction = async (
+    creatorId: string,
+    created: Date,
+    requestData: INewInventoryTransactionRequestData<IDecrementInventoryTransactionSpecificData>,
+    previousInventoryTransaction: IInventoryTransactionDoc<any> | null,
+    transactionIdForcingDerivation: string | null = null
+): Promise<IInventoryTransactionDoc<IDecrementInventoryTransactionSpecificData>> => {
+    const inventoryItem: IInventoryItemDoc | null = await inventoryItemService.getInventoryItem(requestData.inventoryItemId);
+    if (!inventoryItem) {
+        throw new Error(`Položka nenalezena`);
+    }
+    if (!(await financialPeriodService.getIsFinancialPeriodExistsWithDate(inventoryItem.financialUnit, requestData.effectiveDate))) {
+        throw new Error('Účetní období s daným datem nenalezeno');
+    }
+    const stockValuationMethod: StockValuationMethod | null = await inventoryGroupService.getInventoryGroupStockValuationMethod(
+        inventoryItem.inventoryGroup
+    );
+    if (!stockValuationMethod) {
+        throw new Error(`Oceňovací metoda nenalezena`);
+    }
+    const effectiveDate: Date = utilitiesService.getUTCDate(requestData.effectiveDate);
+    const inventoryItemTransactionIndex: number = previousInventoryTransaction ?
+        previousInventoryTransaction.inventoryItemTransactionIndex + 1 :
+        1;
+    const currentStock: IStock = previousInventoryTransaction ?
+        previousInventoryTransaction.stockAfterTransaction :
+        { totalStockQuantity: 0, totalStockCost: 0, batches: [] };
+    const stockDecrementResult: IStockQuantityChangeResult = stockService.getStockDecrementResult(
+        currentStock, requestData.specificData.quantity, stockValuationMethod
+    );
+    const newInventoryTransactionData: INewInventoryTransaction<IDecrementInventoryTransactionSpecificData> = {
+        type: InventoryTransactionType.Sale,
+        description: requestData.description,
+        inventoryItem: inventoryItem.id,
+        financialUnit: inventoryItem.financialUnit,
+        debitAccount: requestData.debitAccountId,
+        creditAccount: requestData.creditAccountId,
+        totalTransactionAmount: stockDecrementResult.changeCost,
+        effectiveDate,
+        inventoryItemTransactionIndex,
+        specificData: requestData.specificData,
+        stockBeforeTransaction: currentStock,
+        stockAfterTransaction: stockDecrementResult.stock,
+        stockValuationMethodApplied: stockValuationMethod,
+        isDerivedTransaction: !!transactionIdForcingDerivation,
+        transactionForcingDerivation: transactionIdForcingDerivation,
+        isActive: false,
+        created,
+        creator: creatorId
+    };
+    const inventoryTransaction: IInventoryTransactionDoc<any> = await insertInventoryTransactionToDb(newInventoryTransactionData);
+    const newFinancialTransactionData: INewFinancialTransaction = {
+        inventoryTransaction: inventoryTransaction.id,
+        inventoryItem: inventoryItem.id,
+        financialUnit: inventoryItem.financialUnit,
+        debitAccount: requestData.debitAccountId,
+        creditAccount: requestData.creditAccountId,
+        effectiveDate,
+        amount: stockDecrementResult.changeCost,
+        inventoryItemTransactionIndex,
+        isDerivedTransaction: !!transactionIdForcingDerivation,
+        inventoryTransactionForcingDerivation: transactionIdForcingDerivation,
+        created,
+        creator: creatorId
+    };
+    await financialTransactionService.createInactiveFinancialTransaction(newFinancialTransactionData);
+    const saleAmount: number = requestData.specificData.pricePerUnit * requestData.specificData.quantity;
+    const newSaleFinancialTransactionData: INewFinancialTransaction = {
+        inventoryTransaction: inventoryTransaction.id,
+        inventoryItem: inventoryItem.id,
+        financialUnit: inventoryItem.financialUnit,
+        debitAccount: requestData.specificData.saleDebitAccountId,
+        creditAccount: requestData.specificData.saleCreditAccountId,
+        effectiveDate,
+        amount: saleAmount,
+        inventoryItemTransactionIndex,
+        isDerivedTransaction: !!transactionIdForcingDerivation,
+        inventoryTransactionForcingDerivation: transactionIdForcingDerivation,
+        created,
+        creator: creatorId
+    };
+    await financialTransactionService.createInactiveFinancialTransaction(newSaleFinancialTransactionData);
+    return inventoryTransaction;
+}
+
+
+
 const createInactiveInventoryTransaction = async (
     creatorId: string,
     created: Date,
@@ -349,6 +436,14 @@ const createInactiveInventoryTransaction = async (
             );
         case InventoryTransactionType.Decrement:
             return await createDecrementInventoryTransaction(
+                creatorId,
+                created,
+                requestData as INewInventoryTransactionRequestData<IDecrementInventoryTransactionSpecificData>,
+                previousTransaction,
+                transactionIdForcingDerivation
+            );
+        case InventoryTransactionType.Sale:
+            return await createSaleInventoryTransaction(
                 creatorId,
                 created,
                 requestData as INewInventoryTransactionRequestData<IDecrementInventoryTransactionSpecificData>,

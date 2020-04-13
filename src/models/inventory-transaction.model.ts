@@ -1,15 +1,16 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
-import { IStock, StockDecrementType } from './stock.model';
+import { IStock, StockValuationMethod } from './stock.model';
 import { IInventoryItemDoc } from './inventory-item.model';
 import { IFinancialUnitDoc } from './financial-unit.model';
 import { IFinancialAccountDoc } from './financial-account.model';
-import { IUser, IUserDoc } from './user.model';
+import { IUserDoc } from './user.model';
 
 export enum InventoryTransactionType {
     Increment = 'increment',
-    Decrement = 'decrement'
+    Decrement = 'decrement',
+    Sale = 'sale'
 }
 
 export interface IIncrementInventoryTransactionSpecificData {
@@ -19,6 +20,13 @@ export interface IIncrementInventoryTransactionSpecificData {
 
 export interface IDecrementInventoryTransactionSpecificData {
     quantity: number;
+}
+
+export interface IDecrementInventoryTransactionSpecificData {
+    quantity: number;
+    pricePerUnit: number;
+    saleDebitAccountId: string;
+    saleCreditAccountId: string;
 }
 
 export interface INewInventoryTransactionRequestData<SpecificData> {
@@ -39,7 +47,7 @@ interface IInventoryTransactionBase<SpecificData> {
     totalTransactionAmount: number;
     stockBeforeTransaction: IStock;
     stockAfterTransaction: IStock;
-    stockDecrementTypeApplied: StockDecrementType;
+    stockValuationMethodApplied: StockValuationMethod;
     inventoryItemTransactionIndex: number;
     isDerivedTransaction: boolean;
     isActive: boolean;
@@ -144,8 +152,8 @@ const InventoryTransactionSchema = new Schema<IInventoryTransaction<any>>({
         },
         required: true
     },
-    stockDecrementTypeApplied: {
-        type: StockDecrementType,
+    stockValuationMethodApplied: {
+        type: StockValuationMethod,
         required: true
     },
     isDerivedTransaction: {

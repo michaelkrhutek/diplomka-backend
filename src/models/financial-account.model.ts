@@ -3,9 +3,17 @@ import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
 import { IFinancialUnitDoc } from './financial-unit.model';
 
+export enum FinancialAccountType {
+    Assets = 'assets',
+    Liabilities = 'liabilities',
+    Revenues = 'revenues',
+    Expenses = 'expenses'
+}
+
 export interface IFinancialAccountBase {
-    name: string;
     code: string;
+    name: string;
+    type: FinancialAccountType;
 }
 
 interface IReferences {
@@ -22,12 +30,16 @@ export interface IFinancialAccountDoc extends IFinancialAccountBase, IReferences
 export interface IFinancialAccountPopulatedDoc extends IFinancialAccountBase, IPopulatedReferences, Document {}
 
 const FinancialAccountSchema = new Schema<IFinancialAccount>({
+    code: {
+        type: String,
+        required: true
+    },
     name: {
         type: String,
         required: true
     },
-    code: {
-        type: String,
+    type: {
+        type: FinancialAccountType,
         required: true
     },
     financialUnit: {

@@ -1,16 +1,16 @@
-import { StockDecrementType, IStock, IStockBatch, IStockQuantityChangeResult } from "../models/stock.model";
+import { StockValuationMethod, IStock, IStockBatch, IStockQuantityChangeResult } from "../models/stock.model";
 import * as utilitiesService from './utilities.service';
 
 
 
-export const parseStockDecrementType = (typeAsString: string): StockDecrementType | null => {
+export const parseStockValuationMethod = (typeAsString: string): StockValuationMethod | null => {
     switch (typeAsString) {
-        case StockDecrementType.FIFO:
-            return StockDecrementType.FIFO;
-        case StockDecrementType.LIFO:
-            return StockDecrementType.LIFO;
-        case StockDecrementType.Average:
-            return StockDecrementType.Average;
+        case StockValuationMethod.FIFO:
+            return StockValuationMethod.FIFO;
+        case StockValuationMethod.LIFO:
+            return StockValuationMethod.LIFO;
+        case StockValuationMethod.Average:
+            return StockValuationMethod.Average;
         default:
             return null;
     }
@@ -18,10 +18,10 @@ export const parseStockDecrementType = (typeAsString: string): StockDecrementTyp
 
 
 
-export const getSortedStock = (stock: IStock, stockDecrementType: StockDecrementType): IStock => {
+export const getSortedStock = (stock: IStock, stockValuationMethod: StockValuationMethod): IStock => {
     if (stock.batches.length < 2) {
         return stock;
-    } else if (stockDecrementType == StockDecrementType.FIFO) {
+    } else if (stockValuationMethod == StockValuationMethod.FIFO) {
         const sortedBatches: IStockBatch[] = stock.batches.sort((a, b) => a.transactionIndex - b.transactionIndex);
         const sortedStock: IStock = {
             totalStockQuantity: stock.totalStockQuantity,
@@ -29,7 +29,7 @@ export const getSortedStock = (stock: IStock, stockDecrementType: StockDecrement
             batches: sortedBatches
         }
         return sortedStock;
-    } else if (stockDecrementType == StockDecrementType.LIFO) {
+    } else if (stockValuationMethod == StockValuationMethod.LIFO) {
         const sortedBatches: IStockBatch[] = stock.batches.sort((a, b) => b.transactionIndex - a.transactionIndex);
         const sortedStock: IStock = {
             totalStockQuantity: stock.totalStockQuantity,
@@ -37,7 +37,7 @@ export const getSortedStock = (stock: IStock, stockDecrementType: StockDecrement
             batches: sortedBatches
         }
         return sortedStock;
-    } else if (stockDecrementType == StockDecrementType.Average) {
+    } else if (stockValuationMethod == StockValuationMethod.Average) {
         const sortedStock: IStock = {
             totalStockQuantity: stock.totalStockQuantity,
             totalStockCost: stock.totalStockCost,
@@ -59,7 +59,7 @@ export const getSortedStock = (stock: IStock, stockDecrementType: StockDecrement
 export const getStockDecrementResult = (
     currentStock: IStock,
     quantityToRemove: number,
-    stockDecrementType: StockDecrementType
+    stockValuationMethod: StockValuationMethod
 ): IStockQuantityChangeResult => {
     const currentStockQuantity: number = currentStock.batches
         .map((stockBatch) => stockBatch.quantity)
@@ -67,7 +67,7 @@ export const getStockDecrementResult = (
     if (currentStockQuantity < quantityToRemove) {
         throw new Error('Nedostačné množství pro vyskladnění');
     }
-    const sortedStock: IStock = getSortedStock(currentStock, stockDecrementType);
+    const sortedStock: IStock = getSortedStock(currentStock, stockValuationMethod);
     let quantityToRemoveLeft: number = quantityToRemove;
     let changeCost: number = 0;
     const unfiltredBatches: IStockBatch[] = sortedStock.batches.map((batch): IStockBatch => {
@@ -117,7 +117,7 @@ export const getStockDecrementResult = (
 export const getStockIncrementResult = (
     currentStock: IStock,
     newStockBatch: IStockBatch,
-    stockDecrementType: StockDecrementType
+    stockValuationMethod: StockValuationMethod
 ): IStockQuantityChangeResult => {
     let batches: IStockBatch[] = [...currentStock.batches, newStockBatch];
     const totalStockQuantity: number = batches
@@ -126,7 +126,7 @@ export const getStockIncrementResult = (
     const totalStockCost: number = batches
         .map(batch => batch.costPerUnit * batch.quantity)
         .reduce((acc, val) => acc + val, 0);
-    if (stockDecrementType == StockDecrementType.Average) {
+    if (stockValuationMethod == StockValuationMethod.Average) {
         batches = [{
             quantity: totalStockQuantity,
             costPerUnit: totalStockQuantity ? totalStockCost / totalStockQuantity : 0,

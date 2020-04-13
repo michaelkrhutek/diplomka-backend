@@ -1,12 +1,12 @@
 import { mongoose } from '../mongoose-instance';
 import { Document, Schema } from 'mongoose';
 import { IPlainMongooseDoc } from './plain-mongoose-doc.model';
-import { StockDecrementType } from './stock.model';
+import { StockValuationMethod } from './stock.model';
 import { IFinancialUnitDoc } from './financial-unit.model';
 
 interface IInventoryGroupBase {
     name: string;
-    defaultStockDecrementType: StockDecrementType
+    defaultStockValuationMethod: StockValuationMethod
 }
 
 interface IReferences {
@@ -32,7 +32,7 @@ const InventoryGroupSchema = new Schema<IInventoryGroup>({
         ref: 'FinancialUnit',
         required: true
     },
-    defaultStockDecrementType: {
+    defaultStockValuationMethod: {
         type: String,
         required: true
     }

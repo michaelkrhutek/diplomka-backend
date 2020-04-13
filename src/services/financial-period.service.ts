@@ -127,3 +127,10 @@ export const deleteLastFinancialPeriod = async (financialUnitId: string): Promis
         throw new Error('Chyba při odstraňování transakcí a účetních zápisů');
     });
 }
+
+
+
+export const getFinancialPeriodFinancialUnitId = async (financialPeriodId: string): Promise<string | null> => {
+    const financialPeriod: IFinancialPeriodDoc | null = await getFinancialPeriod(financialPeriodId);
+    return financialPeriod ? financialPeriod.financialUnit : null;
+}

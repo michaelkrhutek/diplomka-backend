@@ -12,6 +12,8 @@ export interface INewInventoryTransactionTemplateRequestData {
     transactionType: string;
     debitAccountId: string;
     creditAccountId: string;
+    saleDebitAccountId?: string;
+    saleCreditAccountId?: string;
 }
 
 export interface IInventoryTransactionTemplateBase {
@@ -24,6 +26,8 @@ interface IReferences {
     inventoryGroup: IInventoryGroupDoc['_id'];
     debitAccount: IFinancialAccountDoc['_id'];
     creditAccount: IFinancialAccountDoc['_id'];
+    saleDebitAccount?: IFinancialAccountDoc['_id'];
+    saleCreditAccount?: IFinancialAccountDoc['_id'];
 }
 
 interface IPopulatedReferences {
@@ -31,6 +35,8 @@ interface IPopulatedReferences {
     inventoryGroup: IInventoryGroupDoc;
     debitAccount: IFinancialAccountDoc;
     creditAccount: IFinancialAccountDoc;
+    saleDebitAccount?: IFinancialAccountDoc;
+    saleCreditAccount?: IFinancialAccountDoc;
 }
 
 export interface INewInventoryTransactionTemplate extends IInventoryTransactionTemplateBase, IReferences {}
@@ -66,6 +72,14 @@ const InventoryTransactionTemplateSchema = new Schema<IInventoryTransactionTempl
         type: Schema.Types.ObjectId,
         ref: 'FinancialAccount',
         required: true
+    },
+    saleDebitAccount: {
+        type: Schema.Types.ObjectId,
+        ref: 'FinancialAccount'
+    },
+    saleCreditAccount: {
+        type: Schema.Types.ObjectId,
+        ref: 'FinancialAccount'
     }
 });
 

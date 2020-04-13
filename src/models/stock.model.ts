@@ -1,4 +1,4 @@
-export enum StockDecrementType {
+export enum StockValuationMethod {
     FIFO = 'fifo',
     LIFO = 'lifo',
     Average = 'average'

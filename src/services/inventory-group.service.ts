@@ -1,5 +1,5 @@
 import { InventoryGroupModel, IInventoryGroupDoc, INewInventoryGroup } from "../models/inventory-group.model";
-import { StockDecrementType } from '../models/stock.model';
+import { StockValuationMethod } from '../models/stock.model';
 import * as financialUnitService from './financial-unit.service'; 
 import * as inventoryTransactionTemplateService from './inventory-transaction-template.service'; 
 import * as inventoryItemService from './inventory-item.service';
@@ -48,13 +48,13 @@ export const createDefaultInventoryGroups = async (
     financialUnitId: string,
     rawData: IDefaultInventoryGroupData[],
     financialAccounts: IFinancialAccountDoc[],
-    stockDecrementType: StockDecrementType
+    stockValuationMethod: StockValuationMethod
 ): Promise<IInventoryGroupDoc[]> => {
     const inventoryGroupsPromises: Promise<IInventoryGroupDoc>[] = rawData.map(async (group) => {
         const newGroupData: INewInventoryGroup = {
             name: group.name,
             financialUnit: financialUnitId,
-            defaultStockDecrementType: stockDecrementType
+            defaultStockValuationMethod: stockValuationMethod
         };
         const inventoryGroup: IInventoryGroupDoc = await new InventoryGroupModel(newGroupData).save();
         await inventoryTransactionTemplateService.createDefaultInventoryTransactionTemplates(
@@ -98,12 +98,12 @@ export const updateInventoryGroup = async (id: string, data: INewInventoryGroup)
     }
     await InventoryGroupModel.findByIdAndUpdate(id, {
         name: data.name,
-        defaultStockDecrementType: data.defaultStockDecrementType
+        defaultStockValuationMethod: data.defaultStockValuationMethod
     }).exec().catch((err) => {
         console.error(err);
         throw new Error('Chyba při úpravě skupiny');
     });
-    if (data.defaultStockDecrementType != originalInventoryGroup.defaultStockDecrementType) {
+    if (data.defaultStockValuationMethod != originalInventoryGroup.defaultStockValuationMethod) {
         const inventoryItems: IInventoryItemDoc[] = await inventoryItemService.getInventoryGroupInventoryItems(id);
         const promises: Promise<any>[] = inventoryItems.map((item) => {
             return inventoryTransactionService.recalculateInventoryTransactions(item.id).catch((err) => {
@@ -149,9 +149,16 @@ export const deleteInventoryGroup = async (id: string): Promise<void> => {
 
 
 
-export const getInventoryGroupStockDecrementType = async (inventoryGroupId: string): Promise<StockDecrementType | null> => {
+export const getInventoryGroupStockValuationMethod = async (inventoryGroupId: string): Promise<StockValuationMethod | null> => {
     const inventoryGroup: IInventoryGroupDoc | null  = await InventoryGroupModel
         .findById(inventoryGroupId)
-        .select({ defaultStockDecrementType: 1 });
-    return inventoryGroup ? inventoryGroup.defaultStockDecrementType : null;
+        .select({ defaultStockValuationMethod: 1 });
+    return inventoryGroup ? inventoryGroup.defaultStockValuationMethod : null;
+}
+
+
+
+export const getInventoryGroupFinancialUnitId = async (inventoryGroupId: string): Promise<string | null> => {
+    const inventoryGroup: IInventoryGroupDoc | null = await getInventoryGroup(inventoryGroupId);
+    return inventoryGroup ? inventoryGroup.financialUnit : null;
 }
